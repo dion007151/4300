@@ -1,0 +1,22 @@
+{
+  "name": "4300-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "4300 - Everything. For Free.",
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "npm --workspace apps/web run dev",
+    "build": "npm --workspace apps/web run build",
+    "lint": "npm --workspace apps/web run lint",
+    "typecheck": "npm --workspace apps/web run typecheck",
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "lint:web": "npm --workspace apps/web run lint",
+    "typecheck:web": "npm --workspace apps/web run typecheck",
+    "dev:api": "C:\\laragon\\bin\\python\\python-3.13\\Scripts\\uvicorn.exe app.main:app --reload --port 8000 --app-dir apps/api"
+  }
+}
+
