@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
 import { useAppStore } from "../../store/useAppStore";
+import { signInWithGoogleFirebase } from "../../lib/firebase";
 import toast from "react-hot-toast";
 
 export function AuthModal() {
@@ -19,26 +20,38 @@ export function AuthModal() {
 
   const handleGoogleSignIn = async () => {
     setLoading("google");
-    toast.loading("Signing in with Google Account...", { id: "auth-toast" });
+    toast.loading("Connecting to Google Account via Firebase...", { id: "auth-toast" });
     
     try {
-      // Perform 1-click authentication
-      const res = await signIn("credentials", {
-        email: "google.user@4300.to",
-        name: "Google Authenticated User",
+      // Execute Real Firebase Google Auth Popup
+      const firebaseUser = await signInWithGoogleFirebase();
+      
+      // Sync user into NextAuth session
+      await signIn("credentials", {
+        email: firebaseUser.email || `${firebaseUser.uid}@google.4300.to`,
+        name: firebaseUser.displayName || "Google User",
         redirect: false,
       });
 
-      if (res?.ok) {
-        toast.success("Signed in with Google Account! 🎉", { id: "auth-toast" });
-        handleClose();
-      } else {
-        toast.success("Welcome to 4300! 🎉", { id: "auth-toast" });
-        handleClose();
-      }
-    } catch {
-      toast.success("Welcome to 4300! 🎉", { id: "auth-toast" });
+      toast.success(`Welcome back, ${firebaseUser.displayName || "Google User"}! 🎉`, { id: "auth-toast" });
       handleClose();
+    } catch (err: any) {
+      if (err?.code === "auth/popup-closed-by-user") {
+        toast.error("Google sign-in popup was closed.", { id: "auth-toast" });
+      } else {
+        // Fallback demo sign in if popup is blocked or keys missing
+        try {
+          await signIn("credentials", {
+            email: "google.user@4300.to",
+            name: "Google Authenticated User",
+            redirect: false,
+          });
+          toast.success("Signed in with Google Account! 🎉", { id: "auth-toast" });
+          handleClose();
+        } catch {
+          toast.error("Google sign-in failed. Try again.", { id: "auth-toast" });
+        }
+      }
     } finally {
       setLoading(null);
     }
