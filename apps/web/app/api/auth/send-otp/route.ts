@@ -34,27 +34,94 @@ export async function POST(req: NextRequest) {
     if (gmailPass) {
       try {
         const transporter = nodemailer.createTransport({
-          service: "gmail",
+          host: "smtp.gmail.com",
+          port: 465,
+          secure: true,
           auth: {
             user: gmailUser,
             pass: gmailPass,
           },
         });
 
+        // Plain text fallback (Crucial for Spam Filter score optimization)
+        const textContent = `Your 4300 Workspace verification code is: ${otpCode}\n\nThis code is valid for 5 minutes. If you did not request this verification code, please disregard this email.`;
+
+        // Modern HTML template
+        const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your 4300 Verification Code</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #0b0f19; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 480px; background-color: #161e2e; border: 1px solid #2d3748; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 32px 32px 16px 32px; text-align: left;">
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="background-color: #3b82f6; width: 36px; height: 36px; border-radius: 10px; text-align: center; vertical-align: middle; font-weight: bold; color: #ffffff; font-size: 18px;">
+                    4
+                  </td>
+                  <td style="padding-left: 12px; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
+                    4300 Workspace
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 16px 32px 32px 32px;">
+              <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.3px;">
+                Verification Code
+              </h1>
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #94a3b8;">
+                Use the 6-digit security code below to complete your sign in to 4300 Workspace:
+              </p>
+
+              <!-- OTP Code Display Box -->
+              <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 24px;">
+                <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #60a5fa; display: inline-block;">
+                  ${otpCode}
+                </span>
+              </div>
+
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b;">
+                ⏰ Valid for <strong>5 minutes</strong>. Never share this code with anyone.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 32px; background-color: #0f172a; border-top: 1px solid #1e293b; text-align: center; font-size: 11px; color: #64748b;">
+              Sent securely by 4300 Workspace &bull; <a href="mailto:dionimarflores9@gmail.com" style="color: #60a5fa; text-decoration: none;">Support Help</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+        `;
+
         await transporter.sendMail({
           from: `"4300 Workspace" <${gmailUser}>`,
           to: cleanEmail,
-          subject: `${otpCode} is your 4300 Verification Code`,
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; background: #0f172a; color: #ffffff; border-radius: 12px; max-width: 500px;">
-              <h2 style="color: #38bdf8;">4300 Workspace Authentication</h2>
-              <p style="font-size: 14px; color: #cbd5e1;">Your 6-digit verification code to sign into 4300 is:</p>
-              <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #38bdf8; background: #1e293b; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
-                ${otpCode}
-              </div>
-              <p style="font-size: 12px; color: #94a3b8;">This code will expire in 5 minutes. Do not share this code with anyone.</p>
-            </div>
-          `,
+          subject: `Your 4300 verification code is ${otpCode}`,
+          text: textContent,
+          html: htmlContent,
+          headers: {
+            "X-Entity-Ref-ID": `otp-${Date.now()}`,
+          },
         });
         emailSent = true;
       } catch (e) {
@@ -65,7 +132,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       emailSent,
-      otpCode, // Available for toast preview if Gmail App Password not yet set
+      otpCode,
       message: `6-Digit OTP Code generated for ${cleanEmail}`,
     });
   } catch (error: any) {
