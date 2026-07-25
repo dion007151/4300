@@ -29,16 +29,15 @@ export default function ResumePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-display font-bold" style={{ color: "var(--text-primary)" }}>
+            <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">
               Resume Suite
             </h1>
-            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-sm mt-1 text-[var(--text-secondary)]">
               Build, check, and export ATS-optimized resumes
             </p>
           </div>
           <Link href="/resume/builder" className="btn btn-primary">
-            <i className="bi bi-plus-lg" />
-            New Resume
+            <i className="bi bi-plus-lg" /> New Resume
           </Link>
         </div>
 
@@ -63,8 +62,8 @@ export default function ResumePage() {
                 <i className={`bi ${t.icon} text-xl`} />
               </div>
               <div>
-                <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{t.label}</p>
-                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{t.desc}</p>
+                <p className="font-semibold text-sm text-[var(--text-primary)]">{t.label}</p>
+                <p className="text-xs mt-0.5 text-[var(--text-muted)]">{t.desc}</p>
               </div>
             </Link>
           ))}
@@ -74,16 +73,15 @@ export default function ResumePage() {
         <div className="grid lg:grid-cols-[1fr_340px] gap-6">
 
           {/* Templates */}
-          <section>
-            <h2 className="section-title mb-4">Resume Templates</h2>
+          <section className="space-y-4">
+            <h2 className="section-title">Resume Templates</h2>
             <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {templates.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setSelectedTemplate(t.id)}
-                  className="text-left rounded-2xl overflow-hidden transition hover:-translate-y-1"
+                  className="text-left rounded-2xl overflow-hidden transition hover:-translate-y-1 surface"
                   style={{
-                    background: "var(--bg-surface)",
                     border: `2px solid ${selectedTemplate === t.id ? t.color : "var(--border)"}`,
                     boxShadow: selectedTemplate === t.id ? `0 0 0 3px ${t.color}22` : "none"
                   }}
@@ -102,7 +100,7 @@ export default function ResumePage() {
                   </div>
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>
+                      <span className="font-semibold text-sm text-[var(--text-primary)]">
                         {t.name}
                       </span>
                       <span
@@ -112,14 +110,16 @@ export default function ResumePage() {
                         {t.tag}
                       </span>
                     </div>
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t.preview}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{t.preview}</p>
                   </div>
                 </button>
               ))}
             </div>
+
+            {/* DIRECT ACTION LINK WITH SELECTED TEMPLATE QUERY PARAM */}
             <Link
-              href="/resume/builder"
-              className="btn btn-primary mt-5 inline-flex"
+              href={`/resume/builder?template=${selectedTemplate}`}
+              className="btn btn-primary mt-4 inline-flex h-11 px-6 font-bold text-sm"
             >
               <i className="bi bi-pencil-square" />
               Use {templates.find(t => t.id === selectedTemplate)?.name} Template
@@ -134,15 +134,14 @@ export default function ResumePage() {
                 {recentResumes.map((r) => (
                   <div
                     key={r.name}
-                    className="rounded-2xl p-4"
-                    style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}
+                    className="rounded-2xl p-4 surface border border-[var(--border)] space-y-3"
                   >
-                    <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">
                           {r.name}
                         </p>
-                        <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        <p className="text-xs mt-0.5 text-[var(--text-muted)]">
                           {r.template} · {r.updatedAt}
                         </p>
                       </div>
@@ -153,7 +152,7 @@ export default function ResumePage() {
                         {r.score}
                       </div>
                     </div>
-                    <div className="progress-track mb-3">
+                    <div className="progress-track">
                       <div
                         className="progress-fill"
                         style={{
@@ -163,12 +162,9 @@ export default function ResumePage() {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Link href="/resume/builder" className="btn btn-secondary flex-1 justify-center text-xs" style={{ height: 30 }}>
+                      <Link href={`/resume/builder?template=${r.template.toLowerCase()}`} className="btn btn-secondary flex-1 justify-center text-xs" style={{ height: 32 }}>
                         <i className="bi bi-pencil" /> Edit
                       </Link>
-                      <button className="btn btn-secondary flex-1 justify-center text-xs" style={{ height: 30 }}>
-                        <i className="bi bi-download" /> Export
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -177,15 +173,15 @@ export default function ResumePage() {
 
             {/* ATS tip */}
             <div
-              className="rounded-2xl p-4"
+              className="rounded-2xl p-4 space-y-1.5"
               style={{ background: "var(--accent-soft)", border: "1px solid rgba(79,111,255,0.20)" }}
             >
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2">
                 <i className="bi bi-lightbulb-fill text-amber-400" />
-                <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>ATS Tip</span>
+                <span className="text-sm font-semibold text-[var(--text-primary)]">ATS Tip</span>
               </div>
-              <p className="text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
-                Use standard section headings like &ldquo;Work Experience&rdquo; instead of &ldquo;Where I&rsquo;ve Been&rdquo; to maximize ATS compatibility.
+              <p className="text-xs leading-5 text-[var(--text-secondary)]">
+                Use standard section headings like &ldquo;Work Experience&rdquo; to maximize ATS score matching.
               </p>
             </div>
           </aside>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AppShell } from "../../components/layout/AppShell";
 import toast from "react-hot-toast";
 
@@ -123,6 +123,15 @@ export default function ResumeBuilderPage() {
   const [exporting, setExporting] = useState(false);
   const [parsing, setParsing] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get("template");
+      if (t && ["modern", "classic", "minimal", "executive"].includes(t)) {
+        setResume((prev) => ({ ...prev, templateStyle: t as any }));
+      }
+    }
+  }, []);
 
   const updateHeader = (field: keyof ResumeData, value: any) => {
     setResume((prev) => ({ ...prev, [field]: value }));
