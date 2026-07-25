@@ -41,6 +41,8 @@ export interface ResumeData {
   linkedin: string;
   github: string;
   summary: string;
+  photoUrl: string | null;
+  fontFamily: "Inter" | "Outfit" | "Merriweather" | "Roboto" | "Playfair";
   experiences: ExperienceItem[];
   educations: EducationItem[];
   projects: ProjectItem[];
@@ -59,6 +61,8 @@ const initialResume: ResumeData = {
   linkedin: "linkedin.com/in/alexjohnson",
   github: "github.com/alexjohnson",
   summary: "Results-driven Senior Software Engineer with 6+ years of experience architecting high-concurrency cloud applications, microservices, and modern frontend platforms. Proven track record of improving site performance by 40% and mentoring cross-functional teams.",
+  photoUrl: null,
+  fontFamily: "Inter",
   experiences: [
     {
       id: "exp1",
@@ -104,12 +108,12 @@ const initialResume: ResumeData = {
 };
 
 const steps = [
-  { id: "personal",   label: "Personal Info", icon: "bi-person" },
-  { id: "experience", label: "Experience",    icon: "bi-briefcase" },
-  { id: "education",  label: "Education",     icon: "bi-mortarboard" },
-  { id: "projects",   label: "Projects",      icon: "bi-code-slash" },
-  { id: "skills",     label: "Skills & Style",icon: "bi-palette" },
-  { id: "preview",    label: "ATS Preview & Export", icon: "bi-file-earmark-check" }
+  { id: "personal",   label: "Personal & Photo", icon: "bi-person" },
+  { id: "experience", label: "Experience",        icon: "bi-briefcase" },
+  { id: "education",  label: "Education",         icon: "bi-mortarboard" },
+  { id: "projects",   label: "Projects",          icon: "bi-code-slash" },
+  { id: "skills",     label: "Skills & Layout",   icon: "bi-palette" },
+  { id: "preview",    label: "Export PDF",        icon: "bi-file-earmark-check" }
 ];
 
 export default function ResumeBuilderPage() {
@@ -119,20 +123,29 @@ export default function ResumeBuilderPage() {
   const [exporting, setExporting] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const updateHeader = (field: keyof ResumeData, value: string) => {
+  const updateHeader = (field: keyof ResumeData, value: any) => {
     setResume((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      updateHeader("photoUrl", url);
+      toast.success("Photo added!");
+    }
   };
 
   // ── Dynamic Experience Actions ──
   const addExperience = () => {
     const newItem: ExperienceItem = {
       id: `exp_${Date.now()}`,
-      company: "New Company",
-      role: "Software Engineer",
+      company: "Company Name",
+      role: "Job Title",
       location: "City, State",
       from: "2023",
       to: "Present",
-      duties: "• Described key achievement or responsibility here..."
+      duties: "• Described key achievement or responsibility..."
     };
     setResume((prev) => ({ ...prev, experiences: [...prev.experiences, newItem] }));
     toast.success("Position added!");
@@ -158,7 +171,7 @@ export default function ResumeBuilderPage() {
     const newItem: EducationItem = {
       id: `edu_${Date.now()}`,
       school: "University Name",
-      degree: "B.S. Computer Science",
+      degree: "Degree / Diploma",
       location: "City, State",
       year: "2023",
       gpa: "3.8"
@@ -187,8 +200,8 @@ export default function ResumeBuilderPage() {
       id: `proj_${Date.now()}`,
       title: "Project Name",
       tech: "React, Node.js",
-      link: "github.com/username/project",
-      description: "Description of the project and impact..."
+      link: "github.com/project",
+      description: "Description of the project..."
     };
     setResume((prev) => ({ ...prev, projects: [...prev.projects, newItem] }));
     toast.success("Project added!");
@@ -221,23 +234,16 @@ export default function ResumeBuilderPage() {
     setResume((prev) => ({ ...prev, skills: prev.skills.filter((s) => s !== skill) }));
   };
 
-  // ── Downloads ──
   const downloadTXT = () => {
-    let txt = `${resume.name.toUpperCase()}\n${resume.title}\n${resume.email} | ${resume.phone} | ${resume.location}\n`;
-    if (resume.linkedin) txt += `LinkedIn: ${resume.linkedin} | GitHub: ${resume.github}\n`;
-    txt += `\n========================================\nSUMMARY\n========================================\n${resume.summary}\n`;
-
-    txt += `\n========================================\nEXPERIENCE\n========================================\n`;
+    let txt = `${resume.name.toUpperCase()}\n${resume.title}\n${resume.email} | ${resume.phone} | ${resume.location}\n\nSUMMARY\n${resume.summary}\n\nEXPERIENCE\n`;
     resume.experiences.forEach((exp) => {
-      txt += `${exp.role} @ ${exp.company} (${exp.from} - ${exp.to})\n${exp.location}\n${exp.duties}\n\n`;
+      txt += `${exp.role} @ ${exp.company} (${exp.from} - ${exp.to})\n${exp.duties}\n\n`;
     });
-
-    txt += `========================================\nEDUCATION\n========================================\n`;
+    txt += `EDUCATION\n`;
     resume.educations.forEach((edu) => {
-      txt += `${edu.degree} - ${edu.school} (${edu.year})\nGPA: ${edu.gpa}\n\n`;
+      txt += `${edu.degree} - ${edu.school} (${edu.year})\n\n`;
     });
-
-    txt += `========================================\nSKILLS\n========================================\n${resume.skills.join(", ")}\n`;
+    txt += `SKILLS\n${resume.skills.join(", ")}\n`;
 
     const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -245,32 +251,29 @@ export default function ResumeBuilderPage() {
     a.href = url;
     a.download = `${resume.name.replace(/\s+/g, "_")}_ATS_Resume.txt`;
     a.click();
-    toast.success("ATS Text File Downloaded! 📄");
+    toast.success("ATS Plain Text File Downloaded!");
   };
 
   const downloadPDF = () => {
     setExporting(true);
-    toast.loading("Preparing print-ready PDF...", { id: "pdf-toast" });
+    toast.loading("Opening Print / Save to PDF...", { id: "pdf-toast" });
     setTimeout(() => {
       window.print();
       setExporting(false);
-      toast.success("PDF Dialog Ready!", { id: "pdf-toast" });
-    }, 400);
+      toast.success("PDF Print Dialog Ready!", { id: "pdf-toast" });
+    }, 300);
   };
 
-  const downloadJSON = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(resume, null, 2));
-    const a = document.createElement("a");
-    a.href = dataStr;
-    a.download = `${resume.name.replace(/\s+/g, "_")}_ResumeData.json`;
-    a.click();
-    toast.success("Resume Data JSON Backup Downloaded!");
-  };
+  const fontStyleClass =
+    resume.fontFamily === "Merriweather"
+      ? "font-serif"
+      : resume.fontFamily === "Playfair"
+      ? "font-serif tracking-tight"
+      : "font-sans";
 
   return (
     <AppShell>
       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)]">
-        {/* Printable CSS block */}
         <style>{`
           @media print {
             body * { visibility: hidden; }
@@ -301,10 +304,34 @@ export default function ResumeBuilderPage() {
 
           {/* Form Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Step 0: Personal */}
+            {/* Step 0: Personal & Photo */}
             {step === 0 && (
               <div className="space-y-4 animate-fade-up">
-                <h2 className="section-title">Personal Information</h2>
+                <h2 className="section-title">Personal Info & Photo</h2>
+
+                {/* Photo Upload */}
+                <div className="flex items-center gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-hover)]">
+                  {resume.photoUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={resume.photoUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-[var(--accent)]" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                      <i className="bi bi-person text-2xl" />
+                    </div>
+                  )}
+                  <div>
+                    <label className="btn btn-secondary text-xs cursor-pointer">
+                      <i className="bi bi-upload" /> Upload Profile Photo (Optional)
+                      <input type="file" className="sr-only" accept="image/*" onChange={handlePhoto} />
+                    </label>
+                    {resume.photoUrl && (
+                      <button className="text-red-500 text-xs font-semibold block mt-1" onClick={() => updateHeader("photoUrl", null)}>
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="label block mb-1">Full Name</label>
@@ -349,7 +376,7 @@ export default function ResumeBuilderPage() {
                 </div>
 
                 {resume.experiences.map((exp, index) => (
-                  <div key={exp.id} className="rounded-2xl p-4 space-y-3 relative surface border border-[var(--border)]">
+                  <div key={exp.id} className="rounded-2xl p-4 space-y-3 surface border border-[var(--border)]">
                     <div className="flex items-center justify-between border-b pb-2 border-[var(--border)]">
                       <span className="font-bold text-xs uppercase text-[var(--accent)]">Position #{index + 1}</span>
                       <button className="text-red-500 hover:text-red-600 text-xs font-semibold" onClick={() => removeExperience(exp.id)}>
@@ -383,7 +410,7 @@ export default function ResumeBuilderPage() {
                     </div>
 
                     <div>
-                      <label className="label block mb-1">Duties & Bullet Achievements</label>
+                      <label className="label block mb-1">Duties & Achievements</label>
                       <textarea className="input" rows={4} value={exp.duties} onChange={(e) => updateExperience(exp.id, "duties", e.target.value)} />
                     </div>
                   </div>
@@ -436,7 +463,7 @@ export default function ResumeBuilderPage() {
             {step === 3 && (
               <div className="space-y-5 animate-fade-up">
                 <div className="flex items-center justify-between">
-                  <h2 className="section-title">Projects & Accomplishments</h2>
+                  <h2 className="section-title">Key Projects</h2>
                   <button className="btn btn-primary text-xs" onClick={addProject}>
                     <i className="bi bi-plus-lg" /> Add Project
                   </button>
@@ -469,45 +496,66 @@ export default function ResumeBuilderPage() {
               </div>
             )}
 
-            {/* Step 4: Skills & Styling */}
+            {/* Step 4: Layout & Fonts */}
             {step === 4 && (
               <div className="space-y-5 animate-fade-up">
-                <h2 className="section-title">Skills & Layout Style</h2>
+                <h2 className="section-title">Resume Layout & Font Styling</h2>
 
-                {/* Template Choice */}
+                {/* 4 Distinct Resume Templates */}
                 <div>
-                  <label className="label block mb-2">Resume Layout</label>
+                  <label className="label block mb-2">Select Template Layout</label>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { id: "modern", label: "Modern Executive", desc: "Top header, colored accent, clean lines" },
-                      { id: "classic", label: "Classic ATS 100%", desc: "Traditional single-column, max ATS pass" },
-                      { id: "minimal", label: "Minimalist Clean", desc: "Monochrome, high density" },
-                      { id: "executive", label: "Corporate Leader", desc: "Bold section banners" }
+                      { id: "modern",    label: "Modern 2-Column",    desc: "Sidebar layout, avatar photo, accent color header" },
+                      { id: "classic",   label: "Classic ATS 100%",   desc: "Clean single-column, max parser compatibility" },
+                      { id: "minimal",   label: "Minimalist Clean",  desc: "High density text, subtle dividers" },
+                      { id: "executive", label: "Executive Banner",   desc: "Bold full-width dark banner header" }
                     ].map((t) => (
                       <button
                         key={t.id}
-                        onClick={() => setResume((prev) => ({ ...prev, templateStyle: t.id as any }))}
+                        onClick={() => updateHeader("templateStyle", t.id)}
                         className="p-3 rounded-xl text-left border transition"
                         style={{
                           background: resume.templateStyle === t.id ? "var(--accent-soft)" : "var(--bg-hover)",
                           borderColor: resume.templateStyle === t.id ? "var(--accent)" : "var(--border)"
                         }}
                       >
-                        <p className="font-bold text-xs" style={{ color: "var(--text-primary)" }}>{t.label}</p>
+                        <p className="font-bold text-xs text-[var(--text-primary)]">{t.label}</p>
                         <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{t.desc}</p>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Color Choice */}
+                {/* Font Selector */}
                 <div>
-                  <label className="label block mb-2">Accent Color</label>
+                  <label className="label block mb-2">Typography & Font Family</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["Inter", "Outfit", "Merriweather", "Roboto", "Playfair"] as const).map((font) => (
+                      <button
+                        key={font}
+                        onClick={() => updateHeader("fontFamily", font)}
+                        className="p-2.5 rounded-xl border text-xs font-semibold transition text-center"
+                        style={{
+                          background: resume.fontFamily === font ? "var(--accent)" : "var(--bg-hover)",
+                          borderColor: resume.fontFamily === font ? "var(--accent)" : "var(--border)",
+                          color: resume.fontFamily === font ? "white" : "var(--text-secondary)"
+                        }}
+                      >
+                        {font}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Accent Colors */}
+                <div>
+                  <label className="label block mb-2">Accent Color Theme</label>
                   <div className="flex gap-3">
-                    {["#4f6fff", "#10b981", "#7c3aed", "#f43f5e", "#0f172a"].map((c) => (
+                    {["#4f6fff", "#10b981", "#7c3aed", "#f43f5e", "#0f172a", "#f59e0b"].map((c) => (
                       <button
                         key={c}
-                        onClick={() => setResume((prev) => ({ ...prev, accentColor: c }))}
+                        onClick={() => updateHeader("accentColor", c)}
                         className="w-8 h-8 rounded-full transition transform hover:scale-110 flex items-center justify-center text-white"
                         style={{ background: c }}
                       >
@@ -517,31 +565,18 @@ export default function ResumeBuilderPage() {
                   </div>
                 </div>
 
-                {/* Skills Manager */}
+                {/* Skills */}
                 <div>
-                  <label className="label block mb-2">Technical Skills & Tools</label>
+                  <label className="label block mb-2">Skills Manager</label>
                   <div className="flex gap-2 mb-3">
-                    <input
-                      className="input flex-1"
-                      placeholder="Add a skill (e.g. Python, AWS, Docker)"
-                      value={newSkill}
-                      onChange={(e) => setNewSkill(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addSkill()}
-                    />
-                    <button className="btn btn-primary" onClick={addSkill}>
-                      <i className="bi bi-plus-lg" /> Add
-                    </button>
+                    <input className="input flex-1" placeholder="Add a skill..." value={newSkill} onChange={(e) => setNewSkill(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSkill()} />
+                    <button className="btn btn-primary" onClick={addSkill}>Add</button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {resume.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(79,111,255,0.2)]"
-                      >
-                        {skill}
-                        <button onClick={() => removeSkill(skill)} className="hover:text-red-500">
-                          <i className="bi bi-x" />
-                        </button>
+                    {resume.skills.map((s) => (
+                      <span key={s} className="px-3 py-1 rounded-full text-xs font-semibold bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(79,111,255,0.2)] flex items-center gap-1">
+                        {s}
+                        <button onClick={() => removeSkill(s)}><i className="bi bi-x" /></button>
                       </span>
                     ))}
                   </div>
@@ -549,176 +584,232 @@ export default function ResumeBuilderPage() {
               </div>
             )}
 
-            {/* Step 5: Export Step */}
+            {/* Step 5: Export */}
             {step === 5 && (
               <div className="space-y-4 animate-fade-up">
-                <h2 className="section-title">Export Options</h2>
+                <h2 className="section-title">Download & Export Options</h2>
                 <div className="grid grid-cols-2 gap-3">
                   <button className="btn btn-primary justify-center h-12" onClick={downloadPDF} disabled={exporting}>
-                    <i className="bi bi-file-earmark-pdf text-lg" /> Download Print PDF
+                    <i className="bi bi-file-earmark-pdf text-lg" /> Download PDF / Print
                   </button>
                   <button className="btn btn-secondary justify-center h-12" onClick={downloadTXT}>
                     <i className="bi bi-file-text text-lg" /> Download Plain Text (ATS)
-                  </button>
-                  <button className="btn btn-secondary justify-center h-12" onClick={downloadJSON}>
-                    <i className="bi bi-download text-lg" /> Export Backup JSON
-                  </button>
-                  <button className="btn btn-secondary justify-center h-12" onClick={() => { setResume(initialResume); toast.success("Reset to sample data"); }}>
-                    <i className="bi bi-arrow-counterclockwise text-lg" /> Reset Sample Data
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Form Bottom Nav */}
           <div className="p-4 border-t border-[var(--border)] flex items-center justify-between shrink-0">
             <button className="btn btn-secondary text-xs" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>
-              <i className="bi bi-arrow-left" /> Back
+              Back
             </button>
-            <span className="text-xs text-[var(--text-muted)] font-medium">Step {step + 1} of {steps.length}</span>
+            <span className="text-xs text-[var(--text-muted)]">Step {step + 1} of {steps.length}</span>
             {step < steps.length - 1 ? (
               <button className="btn btn-primary text-xs" onClick={() => setStep((s) => s + 1)}>
-                Continue <i className="bi bi-arrow-right" />
+                Continue
               </button>
             ) : (
               <button className="btn btn-primary text-xs" onClick={downloadPDF}>
-                <i className="bi bi-check-circle" /> Done & Export
+                Export PDF
               </button>
             )}
           </div>
         </div>
 
         {/* Right Live ATS-Ready Resume Preview Canvas */}
-        <div className="w-full lg:w-1/2 p-6 bg-slate-900 overflow-y-auto flex flex-col items-center">
-          {/* Quick Action Bar above Canvas */}
+        <div className="w-full lg:w-1/2 p-6 bg-slate-950 overflow-y-auto flex flex-col items-center">
           <div className="w-full max-w-[210mm] flex items-center justify-between mb-4 text-white">
-            <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              LIVE ATS PREVIEW (100% PARSEABLE)
-            </span>
+            <span className="text-xs font-bold text-slate-400">LAYOUT: {resume.templateStyle.toUpperCase()}</span>
             <div className="flex gap-2">
-              <button className="btn btn-secondary text-xs bg-slate-800 border-slate-700 text-white hover:bg-slate-700" onClick={downloadPDF}>
-                <i className="bi bi-printer" /> Print / PDF
-              </button>
-              <button className="btn btn-primary text-xs" onClick={downloadTXT}>
-                <i className="bi bi-file-text" /> TXT
+              <button className="btn btn-primary text-xs" onClick={downloadPDF}>
+                <i className="bi bi-download" /> Export PDF
               </button>
             </div>
           </div>
 
-          {/* A4 Paper Document Output */}
+          {/* Dynamic Printable Resume Document */}
           <div
             id="printable-resume"
             ref={previewRef}
-            className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-sm font-sans space-y-6"
+            className={`w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-sm p-8 sm:p-12 transition-all ${fontStyleClass}`}
             style={{ fontSize: "12px", lineHeight: "1.5" }}
           >
-            {/* Header */}
-            <div className="border-b-2 pb-4" style={{ borderColor: resume.accentColor }}>
-              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{resume.name || "Your Name"}</h1>
-              <p className="text-base font-semibold mt-1" style={{ color: resume.accentColor }}>{resume.title || "Target Job Title"}</p>
-              
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-slate-600 font-medium">
-                {resume.email && <span><i className="bi bi-envelope mr-1" />{resume.email}</span>}
-                {resume.phone && <span><i className="bi bi-telephone mr-1" />{resume.phone}</span>}
-                {resume.location && <span><i className="bi bi-geo-alt mr-1" />{resume.location}</span>}
-                {resume.linkedin && <span><i className="bi bi-linkedin mr-1" />{resume.linkedin}</span>}
-              </div>
-            </div>
 
-            {/* Professional Summary */}
-            {resume.summary && (
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider mb-1.5 pb-0.5 border-b border-slate-200" style={{ color: resume.accentColor }}>
-                  Professional Summary
-                </h2>
-                <p className="text-slate-700 text-xs leading-relaxed">{resume.summary}</p>
-              </div>
-            )}
-
-            {/* Work Experience */}
-            {resume.experiences.length > 0 && (
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider mb-3 pb-0.5 border-b border-slate-200" style={{ color: resume.accentColor }}>
-                  Work Experience
-                </h2>
-                <div className="space-y-4">
-                  {resume.experiences.map((exp) => (
-                    <div key={exp.id} className="space-y-1">
-                      <div className="flex justify-between items-baseline">
-                        <span className="font-bold text-slate-900 text-xs">{exp.role}</span>
-                        <span className="text-[11px] font-medium text-slate-500">{exp.from} – {exp.to}</span>
-                      </div>
-                      <div className="flex justify-between items-baseline text-slate-600 text-[11px] font-semibold">
-                        <span>{exp.company}</span>
-                        <span>{exp.location}</span>
-                      </div>
-                      <div className="text-slate-700 text-xs whitespace-pre-line leading-relaxed pl-1 pt-1">
-                        {exp.duties}
-                      </div>
+            {/* ── LAYOUT 1: Modern 2-Column Sidebar Layout ── */}
+            {resume.templateStyle === "modern" && (
+              <div className="grid grid-cols-[220px_1fr] gap-8">
+                {/* Left Sidebar */}
+                <div className="space-y-6 pr-6 border-r border-slate-200">
+                  {resume.photoUrl && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={resume.photoUrl} alt="Profile" className="w-28 h-28 rounded-full object-cover mx-auto shadow-md border-2" style={{ borderColor: resume.accentColor }} />
+                  )}
+                  <div>
+                    <h3 className="font-bold text-xs uppercase tracking-wider mb-2 border-b pb-1" style={{ color: resume.accentColor }}>Contact</h3>
+                    <div className="space-y-1.5 text-[11px] text-slate-600">
+                      <p><i className="bi bi-envelope mr-1" />{resume.email}</p>
+                      <p><i className="bi bi-telephone mr-1" />{resume.phone}</p>
+                      <p><i className="bi bi-geo-alt mr-1" />{resume.location}</p>
+                      {resume.linkedin && <p><i className="bi bi-linkedin mr-1" />{resume.linkedin}</p>}
                     </div>
-                  ))}
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-xs uppercase tracking-wider mb-2 border-b pb-1" style={{ color: resume.accentColor }}>Skills</h3>
+                    <div className="flex flex-wrap gap-1">
+                      {resume.skills.map((s) => (
+                        <span key={s} className="px-2 py-0.5 rounded text-[10px] bg-slate-100 font-semibold text-slate-800 border border-slate-200">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-xs uppercase tracking-wider mb-2 border-b pb-1" style={{ color: resume.accentColor }}>Education</h3>
+                    {resume.educations.map((edu) => (
+                      <div key={edu.id} className="text-[11px] mb-2">
+                        <p className="font-bold text-slate-900">{edu.degree}</p>
+                        <p className="text-slate-600">{edu.school}</p>
+                        <p className="text-slate-400">{edu.year}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Main Column */}
+                <div className="space-y-6">
+                  <div className="pb-3 border-b-2" style={{ borderColor: resume.accentColor }}>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{resume.name}</h1>
+                    <p className="text-base font-semibold mt-1" style={{ color: resume.accentColor }}>{resume.title}</p>
+                  </div>
+
+                  <div>
+                    <h2 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: resume.accentColor }}>Summary</h2>
+                    <p className="text-xs text-slate-700 leading-relaxed">{resume.summary}</p>
+                  </div>
+
+                  <div>
+                    <h2 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: resume.accentColor }}>Experience</h2>
+                    <div className="space-y-4">
+                      {resume.experiences.map((exp) => (
+                        <div key={exp.id}>
+                          <div className="flex justify-between font-bold text-xs text-slate-900">
+                            <span>{exp.role}</span>
+                            <span>{exp.from} – {exp.to}</span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-slate-600">{exp.company} · {exp.location}</p>
+                          <p className="text-xs text-slate-700 whitespace-pre-line mt-1">{exp.duties}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Education */}
-            {resume.educations.length > 0 && (
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider mb-2.5 pb-0.5 border-b border-slate-200" style={{ color: resume.accentColor }}>
-                  Education
-                </h2>
-                <div className="space-y-2">
+            {/* ── LAYOUT 2: Classic ATS 100% Single Column ── */}
+            {resume.templateStyle === "classic" && (
+              <div className="space-y-5">
+                <div className="text-center border-b pb-4 border-slate-300">
+                  <h1 className="text-2xl font-bold uppercase tracking-wide text-slate-900">{resume.name}</h1>
+                  <p className="text-sm font-semibold text-slate-700">{resume.title}</p>
+                  <p className="text-xs text-slate-600 mt-1">{resume.email} | {resume.phone} | {resume.location} | {resume.linkedin}</p>
+                </div>
+
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider border-b border-slate-400 pb-0.5 mb-1.5" style={{ color: resume.accentColor }}>Professional Summary</h2>
+                  <p className="text-xs text-slate-800 leading-relaxed">{resume.summary}</p>
+                </div>
+
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider border-b border-slate-400 pb-0.5 mb-2" style={{ color: resume.accentColor }}>Work Experience</h2>
+                  <div className="space-y-3">
+                    {resume.experiences.map((exp) => (
+                      <div key={exp.id}>
+                        <div className="flex justify-between font-bold text-xs text-slate-900">
+                          <span>{exp.role} — {exp.company}</span>
+                          <span>{exp.from} – {exp.to}</span>
+                        </div>
+                        <p className="text-xs text-slate-700 whitespace-pre-line mt-1">{exp.duties}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider border-b border-slate-400 pb-0.5 mb-2" style={{ color: resume.accentColor }}>Education</h2>
                   {resume.educations.map((edu) => (
-                    <div key={edu.id} className="flex justify-between items-baseline">
-                      <div>
-                        <span className="font-bold text-slate-900 text-xs">{edu.degree}</span>
-                        <span className="text-slate-600 text-xs ml-2">· {edu.school}</span>
-                        {edu.gpa && <span className="text-slate-500 text-[11px] ml-2">(GPA: {edu.gpa})</span>}
+                    <div key={edu.id} className="flex justify-between text-xs">
+                      <span className="font-bold text-slate-900">{edu.degree}, {edu.school}</span>
+                      <span className="text-slate-600">{edu.year}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider border-b border-slate-400 pb-0.5 mb-1.5" style={{ color: resume.accentColor }}>Technical Skills</h2>
+                  <p className="text-xs text-slate-800">{resume.skills.join(" • ")}</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── LAYOUT 3: Minimalist Clean ── */}
+            {resume.templateStyle === "minimal" && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-3xl font-light text-slate-900">{resume.name}</h1>
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mt-1">{resume.title}</p>
+                  <p className="text-xs text-slate-400 mt-1">{resume.email} · {resume.phone} · {resume.location}</p>
+                </div>
+                <div className="h-px bg-slate-200" />
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-700 leading-relaxed font-light">{resume.summary}</p>
+                  <div>
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Experience</h2>
+                    {resume.experiences.map((exp) => (
+                      <div key={exp.id} className="mb-3">
+                        <div className="flex justify-between text-xs font-bold">
+                          <span>{exp.role} / {exp.company}</span>
+                          <span className="text-slate-400 font-normal">{exp.from} – {exp.to}</span>
+                        </div>
+                        <p className="text-xs text-slate-600 whitespace-pre-line mt-1 font-light">{exp.duties}</p>
                       </div>
-                      <span className="text-[11px] text-slate-500 font-medium">{edu.year}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── LAYOUT 4: Executive Dark Banner ── */}
+            {resume.templateStyle === "executive" && (
+              <div className="space-y-5">
+                <div className="p-6 rounded-xl text-white flex justify-between items-center" style={{ background: resume.accentColor }}>
+                  <div>
+                    <h1 className="text-3xl font-extrabold">{resume.name}</h1>
+                    <p className="text-sm font-semibold opacity-90">{resume.title}</p>
+                  </div>
+                  {resume.photoUrl && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={resume.photoUrl} alt="Photo" className="w-16 h-16 rounded-full object-cover border-2 border-white" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed italic">{resume.summary}</p>
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-l-4 pl-2 mb-3" style={{ borderColor: resume.accentColor }}>Work History</h2>
+                  {resume.experiences.map((exp) => (
+                    <div key={exp.id} className="mb-4">
+                      <div className="flex justify-between font-bold text-xs">
+                        <span className="text-slate-900">{exp.role}</span>
+                        <span className="text-slate-500">{exp.from} – {exp.to}</span>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-600">{exp.company}</p>
+                      <p className="text-xs text-slate-700 whitespace-pre-line mt-1">{exp.duties}</p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Projects */}
-            {resume.projects.length > 0 && (
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider mb-2.5 pb-0.5 border-b border-slate-200" style={{ color: resume.accentColor }}>
-                  Key Projects
-                </h2>
-                <div className="space-y-3">
-                  {resume.projects.map((proj) => (
-                    <div key={proj.id} className="space-y-0.5">
-                      <div className="flex justify-between items-baseline">
-                        <span className="font-bold text-slate-900 text-xs">{proj.title}</span>
-                        <span className="text-[11px] text-slate-500">{proj.tech}</span>
-                      </div>
-                      <p className="text-slate-700 text-xs leading-relaxed">{proj.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Skills */}
-            {resume.skills.length > 0 && (
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider mb-2 pb-0.5 border-b border-slate-200" style={{ color: resume.accentColor }}>
-                  Skills & Core Competencies
-                </h2>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {resume.skills.map((skill) => (
-                    <span key={skill} className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

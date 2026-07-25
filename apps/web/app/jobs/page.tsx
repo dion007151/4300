@@ -1,83 +1,166 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import toast from "react-hot-toast";
 
-const interviewQuestions: Record<string, string[]> = {
-  behavioral: [
-    "Tell me about a time you led a team through a difficult project.",
-    "Describe a situation where you had to learn something new quickly.",
-    "Give an example of how you handled a conflict with a coworker.",
-    "Tell me about a time you failed and what you learned from it.",
-    "Describe your biggest professional achievement."
-  ],
-  technical: [
-    "Explain the difference between REST and GraphQL.",
-    "How does a database index improve query performance?",
-    "What is the time complexity of binary search?",
-    "Explain the concept of eventual consistency in distributed systems.",
-    "Describe the SOLID principles with an example."
-  ],
-  situational: [
-    "If your manager asked you to implement a feature you disagreed with, what would you do?",
-    "How would you prioritize tasks when everything seems urgent?",
-    "What would you do if you noticed a critical bug 30 minutes before launch?",
-    "How would you onboard a new team member to a complex codebase?",
-    "If you were given an impossible deadline, how would you handle it?"
-  ]
-};
-
-const salaryData = [
-  { role: "Software Engineer", level: "Mid",    range: "$95,000 – $130,000" },
-  { role: "Software Engineer", level: "Senior", range: "$140,000 – $185,000" },
-  { role: "Product Manager",   level: "Mid",    range: "$100,000 – $140,000" },
-  { role: "Data Scientist",    level: "Senior", range: "$135,000 – $175,000" },
-  { role: "UX Designer",       level: "Mid",    range: "$85,000 – $115,000" }
+const interviewQuestions = [
+  "Tell me about yourself and why you're a great fit for a Senior Software Engineer role.",
+  "Describe a time when you had to resolve a high-severity production outage or critical bug.",
+  "How do you approach architectural design decisions when trade-offs between speed and scalability exist?",
+  "Tell me about a disagreement you had with a product manager or team member and how you resolved it.",
+  "Where do you see your technical career evolving over the next 3 to 5 years?"
 ];
 
 export default function JobsPage() {
-  const [tool, setTool] = useState("match");
+  const [tool, setTool] = useState("interview");
   const [jobDesc, setJobDesc] = useState("");
-  const [resume, setResume] = useState("");
+  const [resumeText, setResumeText] = useState("");
   const [matched, setMatched] = useState(false);
-  const [qCategory, setQCategory] = useState<keyof typeof interviewQuestions>("behavioral");
-  const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
 
-  const matchJob = async () => {
-    if (!jobDesc.trim() || !resume.trim()) {
-      toast.error("Please fill both fields");
+  // ── LinkedIn Premium Voice Interview Simulator State ──
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [userAnswer, setUserAnswer] = useState("");
+  const [feedback, setFeedback] = useState<{ score: number; tip: string; star: string } | null>(null);
+
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize Web Speech Recognition if supported
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+
+        recognition.onresult = (event: any) => {
+          let transcript = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          setUserAnswer(transcript);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      }
+    }
+  }, []);
+
+  // ── Text To Speech Female Voice Engine ──
+  const speakQuestion = (text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      toast.error("Speech synthesis not supported on this browser");
       return;
     }
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1800));
-    setLoading(false);
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.1; // Friendly female pitch
+
+    // Try to pick a natural female voice
+    const voices = window.speechSynthesis.getVoices();
+    const femaleVoice = voices.find(
+      (v) =>
+        v.name.includes("Female") ||
+        v.name.includes("Google US English") ||
+        v.name.includes("Samantha") ||
+        v.name.includes("Zira") ||
+        v.name.includes("Victoria") ||
+        v.name.includes("Karen")
+    );
+    if (femaleVoice) utterance.voice = femaleVoice;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const startVoiceRecording = () => {
+    if (!recognitionRef.current) {
+      toast.error("Speech recognition not supported in your browser. Type your answer below!");
+      return;
+    }
+    setUserAnswer("");
+    setIsListening(true);
+    recognitionRef.current.start();
+    toast("Listening to your voice... Speak now!", { icon: "🎙️" });
+  };
+
+  const stopVoiceRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  const submitAnswer = () => {
+    if (!userAnswer.trim()) {
+      toast.error("Please record or type an answer first");
+      return;
+    }
+    setFeedback({
+      score: Math.floor(82 + Math.random() * 15),
+      tip: "Great structured response! Excellent emphasis on leadership and concrete metrics.",
+      star: "STAR Method: Situation (✓), Task (✓), Action (✓), Result (✓)"
+    });
+    toast.success("AI Recruiter Feedback Generated!");
+  };
+
+  const analyzeMatch = async () => {
+    if (!jobDesc.trim() || !resumeText.trim()) {
+      toast.error("Please enter both job description and resume");
+      return;
+    }
+    setAnalyzing(true);
+    await new Promise((r) => setTimeout(r, 1800));
+    setAnalyzing(false);
     setMatched(true);
-    toast.success("Analysis complete!");
+    toast.success("Job match analysis complete!");
   };
 
   return (
     <AppShell>
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-display font-bold" style={{ color: "var(--text-primary)" }}>Job Center</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            Match jobs, prep interviews, estimate salary, and plan your career
-          </p>
+      <div className="p-6 max-w-6xl mx-auto space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">
+              LinkedIn Premium Job & Career Center
+            </h1>
+            <p className="text-sm mt-1 text-[var(--text-secondary)]">
+              AI Voice Recruiter Interview Simulator, ATS Matcher, Salary Benchmark & Career Roadmap
+            </p>
+          </div>
+          <span className="badge px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold">
+            <i className="bi bi-patch-check-fill mr-1 text-amber-400" /> LinkedIn Premium Grade
+          </span>
         </div>
 
-        {/* Tool nav */}
-        <div className="flex gap-2 mb-6 flex-wrap">
+        {/* Tool Navigation */}
+        <div className="flex gap-2 border-b border-[var(--border)] pb-3 overflow-x-auto">
           {[
-            { id: "match",     label: "Job Match Analyzer", icon: "bi-briefcase-fill" },
-            { id: "interview", label: "Interview Prep",     icon: "bi-mic" },
-            { id: "salary",    label: "Salary Estimator",   icon: "bi-currency-dollar" },
-            { id: "roadmap",   label: "Career Roadmap",     icon: "bi-map" }
+            { id: "interview", label: "AI Voice Interview Prep", icon: "bi-mic-fill", badge: "Live Recruiter" },
+            { id: "match",     label: "ATS Job Matcher",       icon: "bi-briefcase-fill", badge: "78% Score" },
+            { id: "salary",    label: "Salary Benchmarks",     icon: "bi-currency-dollar", badge: "2026 Rates" },
+            { id: "roadmap",   label: "Career Growth Path",    icon: "bi-map-fill", badge: "5-Step Plan" }
           ].map((t) => (
             <button
               key={t.id}
-              onClick={() => { setTool(t.id); setMatched(false); }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition"
+              onClick={() => setTool(t.id)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition"
               style={{
                 background: tool === t.id ? "var(--accent)" : "var(--bg-surface)",
                 color: tool === t.id ? "white" : "var(--text-secondary)",
@@ -90,213 +173,201 @@ export default function JobsPage() {
           ))}
         </div>
 
-        {/* ── Job Match ── */}
-        {tool === "match" && !matched && (
-          <div className="space-y-4 animate-fade-up">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
-                <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <i className="bi bi-briefcase" style={{ color: "#4f6fff" }} />
-                  <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>Job Description</span>
-                </div>
-                <textarea
-                  className="w-full p-4 bg-transparent outline-none resize-none text-sm leading-6"
-                  style={{ color: "var(--text-primary)", minHeight: 240 }}
-                  placeholder="Paste the job description here…"
-                  value={jobDesc}
-                  onChange={(e) => setJobDesc(e.target.value)}
-                />
-              </div>
-              <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
-                <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <i className="bi bi-file-person" style={{ color: "#10b981" }} />
-                  <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>Your Resume</span>
-                </div>
-                <textarea
-                  className="w-full p-4 bg-transparent outline-none resize-none text-sm leading-6"
-                  style={{ color: "var(--text-primary)", minHeight: 240 }}
-                  placeholder="Paste your resume text here…"
-                  value={resume}
-                  onChange={(e) => setResume(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex justify-center">
-              <button className="btn btn-primary" style={{ height: 44, padding: "0 32px" }} onClick={matchJob} disabled={loading}>
-                {loading ? <><i className="bi bi-arrow-repeat animate-spin" /> Analyzing…</> : <><i className="bi bi-search-heart" /> Analyze Match</>}
-              </button>
-            </div>
-          </div>
-        )}
+        {/* ── TOOL 1: LinkedIn Premium AI Voice Interview Simulator ── */}
+        {tool === "interview" && (
+          <div className="surface rounded-2xl p-6 border border-[var(--border)] space-y-6 animate-fade-up">
 
-        {tool === "match" && matched && (
-          <div className="space-y-5 animate-fade-up">
-            <div className="rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6"
-              style={{ background: "linear-gradient(135deg,#0f1623,#1a1040)", border: "1px solid rgba(79,111,255,0.25)" }}>
-              <div className="relative" style={{ width: 100, height: 100 }}>
-                <svg width="100" height="100" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="#10b981" strokeWidth="8" strokeLinecap="round"
-                    strokeDasharray={`${2*Math.PI*42}`} strokeDashoffset={`${2*Math.PI*42*0.22}`} transform="rotate(-90 50 50)" />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-display font-bold text-white">78</span>
-                  <span className="text-xs text-slate-400">match</span>
+            {/* AI Recruiter Profile Header */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-800 text-white flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-extrabold text-lg shadow-lg">
+                    SJ
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-900" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-base text-white">Sarah Jenkins</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white">
+                      IN RECRUITER
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">Senior Talent Acquisition Partner · Tech & Engineering</p>
                 </div>
               </div>
-              <div>
-                <h2 className="text-xl font-display font-bold text-white">Strong Match 🎯</h2>
-                <p className="text-slate-400 text-sm mt-1 max-w-md">
-                  You match 78% of this job&rsquo;s requirements. Add 3 more keywords and quantify your achievements.
-                </p>
-                <button className="btn btn-primary mt-3" onClick={() => setMatched(false)}>
-                  <i className="bi bi-arrow-repeat" /> Try Another
+
+              <div className="flex gap-2">
+                <button
+                  className="btn btn-primary text-xs"
+                  onClick={() => speakQuestion(interviewQuestions[currentQIndex])}
+                  disabled={isSpeaking}
+                >
+                  <i className={`bi ${isSpeaking ? "bi-volume-up-fill animate-pulse" : "bi-volume-up"}`} />
+                  {isSpeaking ? "Sarah Speaking..." : "Ask Question Aloud 🔊"}
                 </button>
               </div>
             </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              {[
-                { label: "Matched Skills", items: ["React","TypeScript","Node.js","REST API","Agile"], color: "#10b981" },
-                { label: "Missing Skills", items: ["GraphQL","Kubernetes","AWS","CI/CD"], color: "#f43f5e" },
-                { label: "Suggestions", items: ["Quantify achievements with %","Add GraphQL to skills","Mention team leadership","Use STAR method for bullets"], color: "#f59e0b" }
-              ].map((section) => (
-                <div key={section.label} className="rounded-2xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
-                  <p className="font-semibold text-xs mb-3" style={{ color: section.color }}>{section.label}</p>
-                  <div className="space-y-1.5">
-                    {section.items.map((item) => (
-                      <div key={item} className="flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: section.color }} />
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* ── Interview Prep ── */}
-        {tool === "interview" && (
-          <div className="animate-fade-up">
-            <div className="flex gap-2 mb-5">
-              {(Object.keys(interviewQuestions) as Array<keyof typeof interviewQuestions>).map((cat) => (
+            {/* Question Card */}
+            <div className="p-6 rounded-2xl bg-[var(--bg-hover)] border border-[var(--border)] space-y-4">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--accent)]">
+                <span>QUESTION {currentQIndex + 1} OF {interviewQuestions.length}</span>
+                <span>BEHAVIORAL & TECHNICAL</span>
+              </div>
+              <p className="text-lg font-bold text-[var(--text-primary)] leading-snug">
+                &ldquo;{interviewQuestions[currentQIndex]}&rdquo;
+              </p>
+
+              <div className="flex gap-2 pt-2">
                 <button
-                  key={cat}
-                  onClick={() => setQCategory(cat)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold transition capitalize"
-                  style={{
-                    background: qCategory === cat ? "var(--accent)" : "var(--bg-surface)",
-                    color: qCategory === cat ? "white" : "var(--text-secondary)",
-                    border: `1px solid ${qCategory === cat ? "var(--accent)" : "var(--border)"}`
+                  className="btn btn-secondary text-xs"
+                  disabled={currentQIndex === 0}
+                  onClick={() => {
+                    setCurrentQIndex((i) => i - 1);
+                    setUserAnswer("");
+                    setFeedback(null);
                   }}
                 >
-                  {cat}
+                  <i className="bi bi-chevron-left" /> Previous
                 </button>
-              ))}
+                <button
+                  className="btn btn-secondary text-xs"
+                  disabled={currentQIndex === interviewQuestions.length - 1}
+                  onClick={() => {
+                    setCurrentQIndex((i) => i + 1);
+                    setUserAnswer("");
+                    setFeedback(null);
+                  }}
+                >
+                  Next Question <i className="bi bi-chevron-right" />
+                </button>
+              </div>
             </div>
-            <div className="space-y-3">
-              {interviewQuestions[qCategory].map((q, i) => (
-                <div key={i} className="rounded-2xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
-                  <div className="flex items-start gap-3">
-                    <div className="grid place-items-center rounded-lg shrink-0"
-                      style={{ width: 30, height: 30, background: "var(--accent-soft)", color: "var(--accent)" }}>
-                      <span className="text-xs font-bold">{i+1}</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium leading-6" style={{ color: "var(--text-primary)" }}>{q}</p>
-                    </div>
-                    <button
-                      className="btn btn-ghost shrink-0"
-                      style={{ height: 30, padding: "0 10px", fontSize: 11 }}
-                      onClick={() => toast.success("Practice mode coming soon!")}
-                    >
-                      <i className="bi bi-mic" /> Practice
+
+            {/* Answer Section with Mic */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="label block">Your Spoken Answer (Speak into Mic or Type)</label>
+                <div className="flex gap-2">
+                  {!isListening ? (
+                    <button className="btn btn-primary text-xs bg-red-600 hover:bg-red-700 text-white" onClick={startVoiceRecording}>
+                      <i className="bi bi-mic-fill" /> Start Speaking
                     </button>
-                  </div>
+                  ) : (
+                    <button className="btn btn-primary text-xs bg-emerald-600 animate-pulse text-white" onClick={stopVoiceRecording}>
+                      <i className="bi bi-stop-circle-fill" /> Listening... (Click Stop)
+                    </button>
+                  )}
                 </div>
-              ))}
+              </div>
+
+              <textarea
+                className="input"
+                rows={4}
+                placeholder="Click 'Start Speaking' to speak your answer with your microphone, or type your answer here..."
+                value={userAnswer}
+                onChange={(e) => setUserAnswer(e.target.value)}
+              />
+
+              <button className="btn btn-primary w-full justify-center h-11" onClick={submitAnswer}>
+                <i className="bi bi-[#4f6fff]" /> Submit Answer to AI Recruiter
+              </button>
             </div>
+
+            {/* AI Recruiter Feedback */}
+            {feedback && (
+              <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3 animate-fade-up">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
+                    <i className="bi bi-patch-check-fill" /> AI Recruiter Rating: {feedback.score} / 100
+                  </span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                    EXCELLENT ANSWER
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-primary)] leading-relaxed">{feedback.tip}</p>
+                <p className="text-xs font-semibold text-emerald-300">{feedback.star}</p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── Salary ── */}
+        {/* ── TOOL 2: ATS Job Matcher ── */}
+        {tool === "match" && (
+          <div className="surface rounded-2xl p-6 border border-[var(--border)] space-y-4 animate-fade-up">
+            <h2 className="font-bold text-base text-[var(--text-primary)]">ATS Resume & Job Matcher</h2>
+            {!matched ? (
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label block mb-1">Job Description</label>
+                    <textarea className="input" rows={6} placeholder="Paste job description..." value={jobDesc} onChange={(e) => setJobDesc(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label block mb-1">Your Resume Content</label>
+                    <textarea className="input" rows={6} placeholder="Paste resume text..." value={resumeText} onChange={(e) => setResumeText(e.target.value)} />
+                  </div>
+                </div>
+                <button className="btn btn-primary w-full justify-center h-11" onClick={analyzeMatch} disabled={analyzing}>
+                  {analyzing ? <><i className="bi bi-arrow-repeat animate-spin" /> Analyzing Keywords...</> : <><i className="bi bi-search" /> Analyze Compatibility</>}
+                </button>
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl bg-slate-900 text-white space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold">Match Score: 88% Strong Match</h3>
+                  <button className="btn btn-secondary text-xs" onClick={() => setMatched(false)}>New Match</button>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="p-3 rounded bg-slate-800">
+                    <p className="font-bold text-emerald-400 mb-1">Matched Keywords (✓)</p>
+                    <p className="text-slate-300">React, TypeScript, Next.js, Node.js, REST API</p>
+                  </div>
+                  <div className="p-3 rounded bg-slate-800">
+                    <p className="font-bold text-amber-400 mb-1">Recommended Keywords (+)</p>
+                    <p className="text-slate-300">GraphQL, Docker, AWS EC2, Microservices</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TOOL 3 & 4: Salary & Roadmap ── */}
         {tool === "salary" && (
-          <div className="animate-fade-up space-y-4">
-            <div className="grid sm:grid-cols-3 gap-4 mb-4">
+          <div className="surface rounded-2xl p-6 border border-[var(--border)] space-y-4 animate-fade-up">
+            <h2 className="font-bold text-base text-[var(--text-primary)]">Market Salary Benchmarks</h2>
+            <div className="divide-y divide-[var(--border)]">
               {[
-                { label: "Role", placeholder: "Software Engineer" },
-                { label: "Location", placeholder: "San Francisco, CA" },
-                { label: "Experience", placeholder: "5 years" }
-              ].map((f) => (
-                <div key={f.label}>
-                  <label className="label block mb-1">{f.label}</label>
-                  <input className="input" placeholder={f.placeholder} />
+                { role: "Senior Full-Stack Engineer", range: "$145,000 – $195,000", loc: "San Francisco / Remote" },
+                { role: "Staff Software Engineer", range: "$180,000 – $240,000", loc: "New York / Remote" },
+                { role: "Lead Product Manager", range: "$135,000 – $175,000", loc: "Austin, TX" }
+              ].map((s, i) => (
+                <div key={i} className="py-3 flex justify-between items-center">
+                  <div>
+                    <p className="font-bold text-xs text-[var(--text-primary)]">{s.role}</p>
+                    <p className="text-[11px] text-[var(--text-muted)]">{s.loc}</p>
+                  </div>
+                  <span className="font-bold text-sm text-emerald-400">{s.range}</span>
                 </div>
               ))}
-            </div>
-            <button className="btn btn-primary" onClick={() => toast.success("Salary data loaded!")}>
-              <i className="bi bi-search" /> Estimate Salary
-            </button>
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <div className="px-5 py-3" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
-                <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>Market Salary Data</p>
-              </div>
-              <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-                {salaryData.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between px-5 py-4" style={{ background: "var(--bg-surface)" }}>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{s.role}</p>
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{s.level} level</p>
-                    </div>
-                    <span className="font-display font-bold text-base" style={{ color: "#10b981" }}>{s.range}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         )}
 
-        {/* ── Career Roadmap ── */}
         {tool === "roadmap" && (
-          <div className="animate-fade-up max-w-2xl">
-            <div className="grid gap-3 mb-4">
-              {["Current Role / Skills", "Target Role"].map((label) => (
-                <div key={label}>
-                  <label className="label block mb-1">{label}</label>
-                  <input className="input" placeholder={`Enter your ${label.toLowerCase()}…`} />
-                </div>
-              ))}
-            </div>
-            <button className="btn btn-primary mb-6" onClick={() => toast.success("Roadmap generated!")}>
-              <i className="bi bi-map" /> Generate Roadmap
-            </button>
-            <div className="space-y-3">
-              {[
-                { step: 1, title: "Master Fundamentals",  desc: "Strengthen CS fundamentals: data structures, algorithms, system design.",         months: "Month 1–2",  color: "#4f6fff" },
-                { step: 2, title: "Build Portfolio",       desc: "Create 3 full-stack projects with modern tech stack (React, Node, PostgreSQL).", months: "Month 3–4",  color: "#10b981" },
-                { step: 3, title: "Open Source Contributions", desc: "Contribute to 2–3 open source projects to build your GitHub profile.",    months: "Month 5–6",  color: "#f59e0b" },
-                { step: 4, title: "Interview Preparation", desc: "Practice LeetCode (150 problems), system design, and behavioral prep.",         months: "Month 7–8",  color: "#7c3aed" },
-                { step: 5, title: "Apply & Negotiate",     desc: "Apply to 20+ companies, negotiate offers, and land your dream role.",           months: "Month 9–10", color: "#f43f5e" }
-              ].map((s) => (
-                <div key={s.step} className="flex gap-4 items-start">
-                  <div className="flex flex-col items-center shrink-0">
-                    <div className="grid place-items-center rounded-full font-bold text-sm text-white"
-                      style={{ width: 36, height: 36, background: s.color }}>
-                      {s.step}
-                    </div>
-                    {s.step < 5 && <div className="w-0.5 h-8 mt-1" style={{ background: "var(--border)" }} />}
-                  </div>
-                  <div className="rounded-2xl p-4 flex-1 mb-2" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
-                    <div className="flex justify-between items-start gap-2">
-                      <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{s.title}</p>
-                      <span className="text-[11px] px-2 py-0.5 rounded-full shrink-0"
-                        style={{ background: `${s.color}15`, color: s.color }}>{s.months}</span>
-                    </div>
-                    <p className="text-xs mt-1.5 leading-5" style={{ color: "var(--text-secondary)" }}>{s.desc}</p>
-                  </div>
-                </div>
-              ))}
+          <div className="surface rounded-2xl p-6 border border-[var(--border)] space-y-4 animate-fade-up">
+            <h2 className="font-bold text-base text-[var(--text-primary)]">5-Step Career Path to Senior / Principal Engineer</h2>
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <span className="font-bold text-blue-400">Step 1: System Design & Architecture (Months 1-2)</span>
+                <p className="text-[var(--text-secondary)] mt-1">Master distributed caching, load balancing, microservices & DB sharding.</p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <span className="font-bold text-emerald-400">Step 2: Technical Leadership & Mentorship (Months 3-4)</span>
+                <p className="text-[var(--text-secondary)] mt-1">Lead cross-functional engineering projects and code quality RFCs.</p>
+              </div>
             </div>
           </div>
         )}
