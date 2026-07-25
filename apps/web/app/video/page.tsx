@@ -18,6 +18,7 @@ const MODELS = [
   { id: "cogvideox",    name: "CogVideoX-5B",       badge: "HF Model", provider: "THUDM", desc: "3D spatio-temporal transformer video model" },
   { id: "wan21",        name: "Wan 2.1 (1.4B)",     badge: "Alibaba",  provider: "Wan-AI", desc: "Open-source 1.4B parameter video diffusion" },
   { id: "svd",          name: "Stable Video Diff",  badge: "Stability",provider: "Stability AI", desc: "Image-to-video motion synthesis model" },
+  { id: "minimax",      name: "MiniMax Video-01",   badge: "Fal / Rep",provider: "MiniMax AI", desc: "High-resolution 720p cinematic motion generator" },
   { id: "pollinations", name: "Pollinations Free",  badge: "100% Free",provider: "Open API", desc: "Instant free video stream with zero rate limits" }
 ];
 
