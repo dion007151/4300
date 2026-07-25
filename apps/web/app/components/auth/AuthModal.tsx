@@ -75,11 +75,17 @@ export function AuthModal() {
       if (!res.ok) throw new Error(data.error || "Failed to send OTP");
 
       setStep("otp");
-      // Display code in toast for immediate 1-click verification
-      toast.success(
-        `🔑 Your 6-Digit OTP Code is: ${data.otpCode}`,
-        { id: "auth-toast", duration: 10000 }
-      );
+      if (data.emailSent) {
+        toast.success(`📩 6-Digit Code sent to ${emailInput}! Check your Gmail inbox.`, {
+          id: "auth-toast",
+          duration: 8000,
+        });
+      } else {
+        toast.success(`🔑 Code: ${data.otpCode} (Sent to ${emailInput})`, {
+          id: "auth-toast",
+          duration: 10000,
+        });
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to send OTP code", { id: "auth-toast" });
     } finally {
