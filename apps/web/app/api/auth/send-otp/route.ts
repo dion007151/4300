@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   // If no Gmail App Password configured, just log for dev
   if (!process.env.GMAIL_APP_PASSWORD) {
     console.log(`[4300 DEV] OTP for ${email}: ${code}`);
-    return NextResponse.json({ ok: true, dev: true });
+    return NextResponse.json({ ok: true, dev: true, code });
   }
 
   try {

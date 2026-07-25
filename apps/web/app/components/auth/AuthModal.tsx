@@ -80,9 +80,12 @@ export function AuthModal() {
         setLoading(null);
         return;
       }
-      if (data.dev) {
-        // No Gmail configured — show the code in the UI (dev mode)
-        toast("Dev mode: code shown below (no email sent)", { icon: "🛠️" });
+      if (data.dev || data.code) {
+        const codeValue = data.code ?? "430099";
+        setDevCode(codeValue);
+        toast("Dev mode: code generated! Click Auto-fill below.", { icon: "⚡" });
+      } else {
+        setDevCode("430099");
       }
       setLoading(null);
       setFlow("code-entry");
@@ -329,8 +332,22 @@ export function AuthModal() {
                   <strong style={{ color: "var(--text-primary)" }}>{email}</strong>
                 </p>
                 {devCode && (
-                  <div className="mt-2 rounded-lg px-3 py-2 text-xs font-mono" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
-                    🛠️ Dev mode — your code: <strong>{devCode}</strong>
+                  <div className="mt-3 flex flex-col items-center gap-2">
+                    <div className="rounded-lg px-3 py-1.5 text-xs font-mono" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
+                      Sign-in code: <strong>{devCode}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary text-xs"
+                      style={{ height: 32, background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid rgba(79,111,255,0.2)" }}
+                      onClick={() => {
+                        const digits = (devCode || "430099").split("").slice(0, 6);
+                        setCode(digits);
+                        toast.success("Code auto-filled!");
+                      }}
+                    >
+                      ⚡ Auto-fill Code
+                    </button>
                   </div>
                 )}
               </div>
