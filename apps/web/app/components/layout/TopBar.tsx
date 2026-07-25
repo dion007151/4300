@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useAppStore } from "../../store/useAppStore";
+import { ReviewModal } from "../review/ReviewModal";
 import Image from "next/image";
 import clsx from "clsx";
 
@@ -21,6 +22,7 @@ export function TopBar() {
   const user = session?.user ?? null;
 
   const [showNotifs, setShowNotifs] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const unreadCount = notifications.filter((n) => !n.read).length;
   const notifsRef = useRef<HTMLDivElement>(null);
 
@@ -92,6 +94,18 @@ export function TopBar() {
       </button>
 
       <div className="flex items-center gap-1.5 ml-auto">
+        {/* ⭐ Rate & Audit Button */}
+        <button
+          onClick={() => setShowReviewModal(true)}
+          className="btn btn-ghost text-xs font-bold gap-1 text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition"
+          style={{ height: 38, padding: "0 10px" }}
+          title="Rate & Review site or inspect Audit info"
+        >
+          <span>⭐</span>
+          <span>4.9</span>
+          <span className="hidden md:inline font-semibold opacity-90">Rate & Audit</span>
+        </button>
+
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
@@ -243,6 +257,8 @@ export function TopBar() {
           </button>
         )}
       </div>
+
+      <ReviewModal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} />
     </header>
   );
 }

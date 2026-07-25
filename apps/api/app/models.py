@@ -23,6 +23,15 @@ class DocumentRecord(SQLModel, table=True):
     updated_at: datetime = SQLField(default_factory=datetime.utcnow)
 
 
+class ReviewRecord(SQLModel, table=True):
+    id: Optional[int] = SQLField(default=None, primary_key=True)
+    author: str = SQLField(default="Anonymous Reviewer")
+    rating: int = SQLField(default=5)
+    comment: str
+    category: str = SQLField(default="Overall Experience")
+    created_at: datetime = SQLField(default_factory=datetime.utcnow)
+
+
 # ── Pydantic Request/Response Models ─────────────────────────────────────────
 
 class ToolModule(BaseModel):
@@ -62,3 +71,10 @@ class DocumentCreateRequest(BaseModel):
     doc_id: str
     title: str
     content: str
+
+
+class ReviewCreateRequest(BaseModel):
+    author: str = "Anonymous Reviewer"
+    rating: int = Field(ge=1, le=5)
+    comment: str
+    category: str = "Overall Experience"

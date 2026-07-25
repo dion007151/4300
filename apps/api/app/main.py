@@ -14,6 +14,8 @@ from .models import (
     SearchHistory,
     DocumentRecord,
     DocumentCreateRequest,
+    ReviewRecord,
+    ReviewCreateRequest,
 )
 from .plugins import TOOL_MODULES, search_modules
 from .ai_providers import stream_ai_response
