@@ -94,17 +94,6 @@ export function TopBar() {
       </button>
 
       <div className="flex items-center gap-1.5 ml-auto">
-        {/* ⭐ Rate & Audit Button */}
-        <button
-          onClick={() => setShowReviewModal(true)}
-          className="btn btn-ghost text-xs font-bold gap-1 text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition"
-          style={{ height: 38, padding: "0 10px" }}
-          title="Rate & Review site or inspect Audit info"
-        >
-          <span>⭐</span>
-          <span>4.9</span>
-          <span className="hidden md:inline font-semibold opacity-90">Rate & Audit</span>
-        </button>
 
         {/* Theme toggle */}
         <button
