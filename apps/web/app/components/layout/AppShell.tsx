@@ -6,7 +6,6 @@ import { TopBar } from "./TopBar";
 import { useAppStore } from "../../store/useAppStore";
 import { SearchPalette } from "../search/SearchPalette";
 import { AuthModal } from "../auth/AuthModal";
-import clsx from "clsx";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { theme, sidebarCollapsed } = useAppStore();
@@ -33,22 +32,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const sidebarW = sidebarCollapsed ? 60 : 260;
+  // Desktop: sidebar is fixed, main content gets a left margin
+  // Mobile: sidebar is an overlay drawer, main content uses full width
+  const desktopSidebarW = sidebarCollapsed ? 60 : 260;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex" }}>
-      {/* Sidebar */}
+      {/* Sidebar (handles both desktop fixed + mobile drawer internally) */}
       <Sidebar />
 
       {/* Main content */}
       <div
         className="flex flex-col flex-1 min-w-0 transition-all duration-300"
-        style={{ marginLeft: sidebarW }}
+        style={{
+          // On desktop, offset by sidebar width. On mobile, no offset (sidebar is overlay).
+          marginLeft: 0,
+        }}
       >
-        <TopBar />
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        {/* Inline style for desktop margin via CSS custom property */}
+        <style>{`
+          @media (min-width: 1024px) {
+            .app-main-content {
+              margin-left: ${desktopSidebarW}px;
+            }
+          }
+        `}</style>
+        <div className="app-main-content flex flex-col flex-1 min-w-0 transition-all duration-300">
+          <TopBar />
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
       </div>
 
       {/* Portals */}

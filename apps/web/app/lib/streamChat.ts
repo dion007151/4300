@@ -1,9 +1,11 @@
 /**
  * Reusable SSE streaming client for the 4300 AI backend.
- * Calls POST /api/ai/stream and yields text deltas via a callback.
+ * Calls the Next.js /api/ai/stream route (no separate server needed).
+ * Falls back to NEXT_PUBLIC_API_URL for the Python API when explicitly set.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Use the built-in Next.js route — no Python server required
+const API_BASE = "";
 
 export interface StreamOptions {
   message: string;

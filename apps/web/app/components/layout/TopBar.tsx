@@ -14,6 +14,7 @@ export function TopBar() {
     notifications,
     markNotificationsRead,
     setAuthModalOpen,
+    toggleMobileNav,
   } = useAppStore();
 
   const { data: session } = useSession();
@@ -48,7 +49,7 @@ export function TopBar() {
 
   return (
     <header
-      className="sticky top-0 z-30 flex items-center gap-3 px-5"
+      className="sticky top-0 z-30 flex items-center gap-2 px-3 sm:px-5"
       style={{
         height: "64px",
         background: "var(--bg-panel)",
@@ -56,6 +57,16 @@ export function TopBar() {
         backdropFilter: "blur(20px)"
       }}
     >
+      {/* Hamburger — mobile only */}
+      <button
+        onClick={toggleMobileNav}
+        className="btn btn-ghost lg:hidden shrink-0"
+        style={{ width: 38, padding: 0, justifyContent: "center" }}
+        aria-label="Open menu"
+      >
+        <i className="bi bi-list text-xl" />
+      </button>
+
       {/* Search bar */}
       <button
         onClick={() => setSearchOpen(true)}

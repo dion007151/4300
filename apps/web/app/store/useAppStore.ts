@@ -37,6 +37,9 @@ export interface AppState {
   toggleTheme: () => void;
   setSidebarCollapsed: (v: boolean) => void;
   toggleSidebar: () => void;
+  mobileNavOpen: boolean;
+  setMobileNavOpen: (v: boolean) => void;
+  toggleMobileNav: () => void;
   setActiveSuite: (suite: string) => void;
   setSearchQuery: (q: string) => void;
   setSearchOpen: (v: boolean) => void;
@@ -49,6 +52,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       theme: "dark",
       sidebarCollapsed: false,
+      mobileNavOpen: false,
       activeSuite: "Dashboard",
       searchQuery: "",
       searchOpen: false,
@@ -141,6 +145,8 @@ export const useAppStore = create<AppState>()(
 
       setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setMobileNavOpen: (v) => set({ mobileNavOpen: v }),
+      toggleMobileNav: () => set((s) => ({ mobileNavOpen: !s.mobileNavOpen })),
       setActiveSuite: (suite) => set({ activeSuite: suite }),
       setSearchQuery: (q) => set({ searchQuery: q }),
       setSearchOpen: (v) => set({ searchOpen: v }),

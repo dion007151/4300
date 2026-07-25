@@ -6,6 +6,14 @@ import Image from "next/image";
 import { useAppStore } from "../../store/useAppStore";
 import toast from "react-hot-toast";
 
+// Detect if OAuth providers are configured (env vars are public-safe empty checks)
+const GOOGLE_CONFIGURED = Boolean(
+  process.env.NEXT_PUBLIC_GOOGLE_CONFIGURED === "true"
+);
+const GITHUB_CONFIGURED = Boolean(
+  process.env.NEXT_PUBLIC_GITHUB_CONFIGURED === "true"
+);
+
 type Flow = "methods" | "email-entry" | "code-entry" | "success";
 
 export function AuthModal() {
@@ -33,11 +41,25 @@ export function AuthModal() {
   };
 
   const handleGoogle = async () => {
+    if (!GOOGLE_CONFIGURED) {
+      toast(
+        "Google login isn't set up yet. Use Email Code to sign in — it works great! 📧",
+        { icon: "ℹ️", duration: 4000 }
+      );
+      return;
+    }
     setLoading("google");
     await signIn("google", { callbackUrl: "/" });
   };
 
   const handleGitHub = async () => {
+    if (!GITHUB_CONFIGURED) {
+      toast(
+        "GitHub login isn't set up yet. Use Email Code to sign in — it works great! 📧",
+        { icon: "ℹ️", duration: 4000 }
+      );
+      return;
+    }
     setLoading("github");
     await signIn("github", { callbackUrl: "/" });
   };

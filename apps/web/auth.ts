@@ -7,16 +7,26 @@ import Credentials from "next-auth/providers/credentials";
 // Exported so the API route can write to it
 export const otpStore = new Map<string, { code: string; expires: number; name?: string }>();
 
+// Only register OAuth providers when credentials are present in env
+const oauthProviders = [
+  ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ? [Google({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      })]
+    : []),
+  ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+    ? [GitHub({
+        clientId: process.env.GITHUB_CLIENT_ID,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      })]
+    : []),
+];
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    }),
-    GitHub({
-      clientId: process.env.GITHUB_CLIENT_ID ?? "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
-    }),
+    ...oauthProviders,
+    // Email OTP — always available, no credentials required
     Credentials({
       id: "otp",
       name: "OTP",
@@ -49,8 +59,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.email = user.email;
-        token.name  = user.name;
+        token.email   = user.email;
+        token.name    = user.name;
         token.picture = user.image;
       }
       return token;
