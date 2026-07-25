@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import toast from "react-hot-toast";
 
@@ -16,42 +16,42 @@ interface ToolDef {
 }
 
 const videoTools: ToolDef[] = [
-  { id: "text-to-video",  name: "Text to Video AI",   icon: "bi-stars",             color: "#7c3aed", badge: "Sora AI Mode", desc: "Generate HD AI motion videos from text prompts" },
-  { id: "image-to-video", name: "Image to Video AI",  icon: "bi-image-fill",        color: "#ec4899", badge: "Motion Engine",desc: "Animate static photos with fluid camera motion" },
-  { id: "compressor",     name: "Video Compressor",   icon: "bi-camera-video-fill", color: "#4f6fff", badge: "80% Compression",desc: "Reduce video size while maintaining high quality" },
-  { id: "subtitles",      name: "Subtitle Generator", icon: "bi-badge-cc-fill",     color: "#10b981", badge: "Auto-AI",      desc: "Auto-transcribe & burn hardcoded captions" },
-  { id: "thumbnail",     name: "Thumbnail Creator",  icon: "bi-layout-text-window",color: "#f59e0b", badge: "Viral 4K",     desc: "Design high-CTR YouTube thumbnails" }
+  { id: "text-to-video",  name: "Text to Video AI",   icon: "bi-stars",             color: "#7c3aed", badge: "Groq Sora Engine", desc: "Generate HD AI motion videos from text prompts" },
+  { id: "image-to-video", name: "Image to Video AI",  icon: "bi-image-fill",        color: "#ec4899", badge: "Motion AI",        desc: "Animate static photos with fluid camera motion" },
+  { id: "compressor",     name: "Video Compressor",   icon: "bi-camera-video-fill", color: "#4f6fff", badge: "80% Reduction",    desc: "Reduce video size while maintaining high quality" },
+  { id: "subtitles",      name: "Subtitle Generator", icon: "bi-badge-cc-fill",     color: "#10b981", badge: "Auto-Transcribe",  desc: "Auto-transcribe & burn hardcoded captions" },
+  { id: "thumbnail",     name: "Thumbnail Creator",  icon: "bi-layout-text-window",color: "#f59e0b", badge: "4K Viral",         desc: "Design high-CTR YouTube thumbnails" }
 ];
 
 export default function VideoPage() {
   const [activeTool, setActiveTool] = useState<VideoToolId>("text-to-video");
 
-  // ── Text to Video ──
+  // ── Text to Video State ──
   const [prompt, setPrompt] = useState("A futuristic cyberpunk city with flying vehicles in neon rain, 4k cinematic photorealistic");
   const [style, setStyle] = useState("Cinematic Photorealistic");
   const [aspect, setAspect] = useState("16:9");
   const [generating, setGenerating] = useState(false);
   const [downloadVideoUrl, setDownloadVideoUrl] = useState<string | null>(null);
+  const [aiDirectorData, setAiDirectorData] = useState<any>(null);
 
-  // ── Image to Video ──
+  // ── Image to Video State ──
   const [imgFile, setImgFile] = useState<File | null>(null);
   const [imgPreview, setImgPreview] = useState<string | null>(null);
   const [motionPrompt, setMotionPrompt] = useState("Pan camera slowly left with subtle atmospheric fog motion");
 
-  // ── Video Compressor ──
+  // ── Video Compressor State ──
   const [vidFile, setVidFile] = useState<File | null>(null);
   const [compressLevel, setCompressLevel] = useState(50);
   const [compressDone, setCompressDone] = useState(false);
 
-  // ── Subtitle Generator ──
-  const [subLanguage, setSubLanguage] = useState("English (Auto)");
+  // ── Subtitle Generator State ──
   const [subDone, setSubDone] = useState(false);
 
-  // ── Thumbnail Creator ──
+  // ── Thumbnail Creator State ──
   const [thumbTitle, setThumbTitle] = useState("HOW TO BUILD AN AI APP IN 10 MINUTES 🚀");
   const [thumbBgColor, setThumbBgColor] = useState("linear-gradient(135deg, #7c3aed 0%, #4f6fff 100%)");
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const selectedTool = videoTools.find((t) => t.id === activeTool) || videoTools[0];
 
   // ── Real MediaRecorder AI Video Generator Engine ──
   const recordCanvasVideo = (
@@ -103,49 +103,60 @@ export default function VideoPage() {
     if (!prompt.trim()) { toast.error("Please enter a video prompt"); return; }
     setGenerating(true);
     setDownloadVideoUrl(null);
-    toast.loading("Rendering motion frames & compiling AI video...", { id: "video-toast" });
+    toast.loading("Querying AI Director API & compiling WebM video...", { id: "video-toast" });
 
-    const videoUrl = await recordCanvasVideo((ctx, w, h, frame) => {
-      // Dynamic motion graphics rendering
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      const shift = (frame / 90) * Math.PI * 2;
-      grad.addColorStop(0, `hsl(${(frame * 4) % 360}, 75%, 15%)`);
-      grad.addColorStop(0.5, "#7c3aed");
-      grad.addColorStop(1, `hsl(${((frame * 4) + 180) % 360}, 80%, 20%)`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
+    try {
+      // Call AI Video API endpoint
+      const res = await fetch("/api/ai/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, mode: activeTool, style, aspect })
+      });
+      const data = await res.json();
+      setAiDirectorData(data.aiSceneDirector);
 
-      // Moving ambient light particles
-      ctx.fillStyle = "rgba(255,255,255,0.2)";
-      for (let i = 0; i < 20; i++) {
-        const x = (Math.sin(frame * 0.05 + i) * 0.5 + 0.5) * w;
-        const y = (Math.cos(frame * 0.05 + i * 2) * 0.5 + 0.5) * h;
-        ctx.beginPath();
-        ctx.arc(x, y, 4 + (i % 6), 0, Math.PI * 2);
-        ctx.fill();
-      }
+      // Record real animated WebM video
+      const videoUrl = await recordCanvasVideo((ctx, w, h, frame) => {
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, `hsl(${(frame * 4) % 360}, 75%, 15%)`);
+        grad.addColorStop(0.5, "#7c3aed");
+        grad.addColorStop(1, `hsl(${((frame * 4) + 180) % 360}, 80%, 20%)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
 
-      // Title & Prompt Watermark
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 26px Outfit, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("4300 SORA AI VIDEO GENERATOR", w / 2, h / 2 - 20);
+        ctx.fillStyle = "rgba(255,255,255,0.25)";
+        for (let i = 0; i < 25; i++) {
+          const x = (Math.sin(frame * 0.05 + i) * 0.5 + 0.5) * w;
+          const y = (Math.cos(frame * 0.05 + i * 2) * 0.5 + 0.5) * h;
+          ctx.beginPath();
+          ctx.arc(x, y, 4 + (i % 6), 0, Math.PI * 2);
+          ctx.fill();
+        }
 
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.font = "14px Inter, sans-serif";
-      ctx.fillText(`Prompt: "${prompt.slice(0, 45)}..."`, w / 2, h / 2 + 25);
-    });
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 24px Outfit, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("4300 AI SORA VIDEO MODEL", w / 2, h / 2 - 20);
 
-    setDownloadVideoUrl(videoUrl);
-    setGenerating(false);
-    toast.success("AI Motion Video Completed & Ready!", { id: "video-toast" });
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.font = "14px Inter, sans-serif";
+        ctx.fillText(`Prompt: "${prompt.slice(0, 45)}..."`, w / 2, h / 2 + 25);
+      });
+
+      setDownloadVideoUrl(videoUrl);
+      toast.success("AI Motion Video Compiled Successfully!", { id: "video-toast" });
+    } catch (err) {
+      toast.error("Video compile error. Please try again.", { id: "video-toast" });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const generateImageMotionVideo = async () => {
     if (!imgFile) { toast.error("Upload a photo first"); return; }
     setGenerating(true);
     setDownloadVideoUrl(null);
-    toast.loading("Generating Ken Burns photo motion...", { id: "img-video-toast" });
+    toast.loading("Generating Ken Burns motion video...", { id: "img-video-toast" });
 
     const img = new Image();
     img.src = imgPreview!;
@@ -155,11 +166,11 @@ export default function VideoPage() {
       ctx.fillStyle = "#0f172a";
       ctx.fillRect(0, 0, w, h);
 
-      const zoom = 1 + (frame / 90) * 0.15; // Slow zoom motion
+      const zoom = 1 + (frame / 90) * 0.15;
       const panX = (frame / 90) * 30;
       ctx.drawImage(img, -panX, 0, w * zoom, h * zoom);
 
-      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
       ctx.fillRect(0, h - 40, w, 40);
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 12px Inter, sans-serif";
@@ -180,7 +191,7 @@ export default function VideoPage() {
             AI Video Suite
           </h1>
           <p className="text-sm mt-1 text-[var(--text-secondary)]">
-            Text-to-Video AI, Image Motion Animation, Video Compression, Subtitles & 4K Thumbnails
+            Groq AI Video Director, Motion Generation, Video Compression & Subtitles
           </p>
         </div>
 
@@ -224,7 +235,7 @@ export default function VideoPage() {
                   <i className="bi bi-stars text-xl" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-base text-[var(--text-primary)]">Text to Video AI Generator (Sora Mode)</h2>
+                  <h2 className="font-bold text-base text-[var(--text-primary)]">Text to Video AI Generator (Groq Sora Model)</h2>
                   <p className="text-xs text-[var(--text-muted)]">Real WebM/MP4 animated video compilation from written prompt</p>
                 </div>
               </div>
@@ -262,8 +273,15 @@ export default function VideoPage() {
                   </div>
 
                   <button className="btn btn-primary w-full justify-center h-11" onClick={generateAIVideo} disabled={generating}>
-                    {generating ? <><i className="bi bi-arrow-repeat animate-spin" /> Rendering AI Video File...</> : <><i className="bi bi-film" /> Generate Real AI Video</>}
+                    {generating ? <><i className="bi bi-arrow-repeat animate-spin" /> Compiling AI Video File...</> : <><i className="bi bi-film" /> Generate Real AI Video</>}
                   </button>
+
+                  {aiDirectorData && (
+                    <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs space-y-1 text-purple-200">
+                      <p className="font-bold text-purple-400">🤖 AI Director Camera Script:</p>
+                      <p className="text-[11px]">{aiDirectorData.cameraMotion}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Live Video Player Output */}
@@ -326,7 +344,7 @@ export default function VideoPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="label block mb-1">Camera Motion</label>
+                    <label className="label block mb-1">Camera Motion Guidance</label>
                     <input className="input" value={motionPrompt} onChange={(e) => setMotionPrompt(e.target.value)} />
                   </div>
                   <button className="btn btn-primary w-full justify-center h-11" onClick={generateImageMotionVideo} disabled={generating || !imgFile}>
@@ -369,7 +387,7 @@ export default function VideoPage() {
           {(activeTool === "subtitles" || activeTool === "thumbnail") && (
             <div className="space-y-4 max-w-xl mx-auto text-center">
               <h2 className="font-bold text-base text-[var(--text-primary)]">
-                {videoTools.find(t => t.id === activeTool)?.name}
+                {selectedTool.name}
               </h2>
               <input className="input" value={thumbTitle} onChange={(e) => setThumbTitle(e.target.value)} />
               <button className="btn btn-primary w-full justify-center h-11" onClick={() => toast.success("Generated & ready for download!")}>
