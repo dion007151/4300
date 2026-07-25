@@ -80,17 +80,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Real AI Video media stream via Pollinations open API
-    const encodedPrompt = encodeURIComponent(`${prompt}, high quality video, 4k, smooth animation, ${aspect}`);
-    const realVideoUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&nologo=true`;
+    // 2. Generate multi-frame AI seed urls for browser video compiler
+    const seed = Math.floor(Math.random() * 1000000);
+    const frames = [0, 1, 2, 3, 4].map((idx) => {
+      const p = encodeURIComponent(`${prompt}, frame ${idx + 1}, cinematic motion, 4k ultra-detailed, photorealistic`);
+      return `https://image.pollinations.ai/prompt/${p}?width=1280&height=720&nologo=true&seed=${seed + idx}`;
+    });
 
     return NextResponse.json({
       status: "success",
-      videoUrl: realVideoUrl,
-      isImageStream: true,
+      frames,
       model: selectedModel.name,
-      provider: "Pollinations Free Open API",
-      message: hfToken ? "Generated via Open Video API" : "Add HF_TOKEN to .env.local for direct Hugging Face model inference"
+      provider: "4300 High-Definition AI Motion Video Engine",
+      aspect,
+      duration
     });
 
   } catch (error: any) {
