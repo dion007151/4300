@@ -13,15 +13,17 @@ const providers = [
     credentials: {
       email: { label: "Email", type: "email" },
       name: { label: "Name", type: "text" },
+      image: { label: "Image", type: "text" },
     },
     async authorize(credentials) {
       const email = (credentials?.email as string) || "user@4300.to";
       const name = (credentials?.name as string) || "4300 User";
+      const image = (credentials?.image as string) || null;
       return {
         id: email,
         email,
         name,
-        image: null,
+        image,
       };
     },
   }),

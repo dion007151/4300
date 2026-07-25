@@ -30,6 +30,7 @@ export function AuthModal() {
       await signIn("credentials", {
         email: firebaseUser.email || `${firebaseUser.uid}@google.4300.to`,
         name: firebaseUser.displayName || "Google User",
+        image: firebaseUser.photoURL || undefined,
         redirect: false,
       });
 
