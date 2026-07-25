@@ -1,21 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
 import { useAppStore } from "../../store/useAppStore";
-import { signInWithGoogleFirebase } from "../../lib/firebase";
+import {
+  signInWithGoogleFirebase,
+  sendEmailPasswordlessLink,
+  completeEmailPasswordlessSignIn,
+} from "../../lib/firebase";
 import toast from "react-hot-toast";
 
 export function AuthModal() {
   const { authModalOpen, setAuthModalOpen } = useAppStore();
   const [loading, setLoading] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+
+  // Check on load if the user opened an Email OTP Sign-In Link
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("emailSignIn=true")) {
+      completeEmailPasswordlessSignIn(window.location.href)
+        .then(async (user) => {
+          if (user) {
+            toast.loading("Completing Firebase Email OTP Login...", { id: "auth-toast" });
+            await signIn("credentials", {
+              email: user.email || `${user.uid}@email.4300.to`,
+              name: user.displayName || user.email?.split("@")[0] || "Firebase User",
+              image: user.photoURL || undefined,
+              redirect: false,
+            });
+            toast.success(`Welcome back, ${user.displayName || "User"}! 🎉`, { id: "auth-toast" });
+            // Clean URL query
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        })
+        .catch((err) => {
+          toast.error(err?.message || "Failed to complete email sign in", { id: "auth-toast" });
+        });
+    }
+  }, []);
 
   if (!authModalOpen) return null;
 
   const handleClose = () => {
     setAuthModalOpen(false);
     setLoading(null);
+    setOtpSent(false);
   };
 
   const handleGoogleSignIn = async () => {
@@ -44,6 +75,27 @@ export function AuthModal() {
       } else {
         toast.error(`Firebase Auth error: ${err?.message || "Authentication failed"}`, { id: "auth-toast" });
       }
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleSendEmailOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput || !emailInput.includes("@")) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    setLoading("otp");
+    toast.loading("Sending Passwordless Link / OTP via Firebase...", { id: "auth-toast" });
+
+    try {
+      await sendEmailPasswordlessLink(emailInput);
+      setOtpSent(true);
+      toast.success(`Sign-in link sent to ${emailInput}! Check your inbox. 📩`, { id: "auth-toast" });
+    } catch (err: any) {
+      toast.error(`Firebase Email error: ${err?.message || "Failed to send link"}`, { id: "auth-toast" });
     } finally {
       setLoading(null);
     }
@@ -103,13 +155,13 @@ export function AuthModal() {
             Sign In to 4300
           </h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            Instant 1-click sign in to access all AI tools, Video Generator & Resume Builders
+            Log in via Google Account, Passwordless Email Link (Firebase), or Instant Guest Access
           </p>
 
           <div className="space-y-3 pt-2">
             {/* Google Sign In Button */}
             <button
-              className="w-full flex items-center justify-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-bold transition hover:scale-[1.01] active:scale-[0.99] border border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-primary)]"
+              className="w-full flex items-center justify-center gap-3 rounded-2xl px-5 py-3 text-sm font-bold transition hover:scale-[1.01] active:scale-[0.99] border border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-primary)]"
               onClick={handleGoogleSignIn}
               disabled={loading !== null}
             >
@@ -126,22 +178,55 @@ export function AuthModal() {
               <span>{loading === "google" ? "Signing In..." : "Continue with Google Account"}</span>
             </button>
 
+            <div className="flex items-center gap-3 my-2 text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
+              <div className="flex-1 h-[1px] bg-[var(--border)]" />
+              <span>or email OTP link</span>
+              <div className="flex-1 h-[1px] bg-[var(--border)]" />
+            </div>
+
+            {/* Firebase Passwordless Email Form */}
+            <form onSubmit={handleSendEmailOTP} className="space-y-2 text-left">
+              <div className="relative">
+                <input
+                  type="email"
+                  className="input w-full pl-9 text-xs h-11 rounded-2xl"
+                  placeholder="name@example.com"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  disabled={loading !== null}
+                />
+                <i className="bi bi-envelope absolute left-3 top-3 text-sm text-[var(--text-muted)]" />
+              </div>
+              <button
+                type="submit"
+                disabled={loading !== null}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-bold transition hover:scale-[1.01] active:scale-[0.99] border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+              >
+                {loading === "otp" ? (
+                  <i className="bi bi-arrow-repeat animate-spin text-sm" />
+                ) : (
+                  <i className="bi bi-send-fill text-xs" />
+                )}
+                <span>{otpSent ? "Resend Firebase Email Link" : "Send Firebase Email Sign-In Link"}</span>
+              </button>
+            </form>
+
             {/* Quick 1-Click Guest Sign In */}
             <button
-              className="w-full flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-bold transition hover:scale-[1.01] active:scale-[0.99] bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(79,111,255,0.25)]"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-xs font-bold transition hover:scale-[1.01] active:scale-[0.99] bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(79,111,255,0.25)] mt-2"
               onClick={handleGuestSignIn}
               disabled={loading !== null}
             >
               {loading === "guest" ? (
-                <i className="bi bi-arrow-repeat animate-spin text-lg" />
+                <i className="bi bi-arrow-repeat animate-spin text-sm" />
               ) : (
-                <i className="bi bi-lightning-charge-fill text-lg" />
+                <i className="bi bi-lightning-charge-fill text-sm" />
               )}
               <span>Instant 1-Click Workspace Access</span>
             </button>
           </div>
 
-          <p className="text-[11px] text-[var(--text-muted)] pt-3">
+          <p className="text-[11px] text-[var(--text-muted)] pt-2">
             By signing in, you agree to 4300 Terms & Privacy Policy.<br />
             Support: <a href="mailto:dionimarflores9@gmail.com" className="text-[var(--accent)] underline font-semibold">dionimarflores9@gmail.com</a>
           </p>
@@ -150,3 +235,4 @@ export function AuthModal() {
     </div>
   );
 }
+

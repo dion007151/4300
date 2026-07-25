@@ -6,6 +6,9 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut as firebaseSignOut,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
   User,
 } from "firebase/auth";
 
@@ -57,8 +60,57 @@ export async function signInWithGoogleFirebase(): Promise<FirebaseUserInfo> {
 }
 
 /**
+ * Send Passwordless Sign-In Link / OTP to user's email via Firebase.
+ */
+export async function sendEmailPasswordlessLink(email: string): Promise<void> {
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://4300.vercel.app";
+  const actionCodeSettings = {
+    url: `${origin}/?emailSignIn=true`,
+    handleCodeInApp: true,
+  };
+
+  await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("emailForSignIn", email);
+  }
+}
+
+/**
+ * Complete Passwordless Sign-In when user opens email link.
+ */
+export async function completeEmailPasswordlessSignIn(url: string, providedEmail?: string): Promise<FirebaseUserInfo | null> {
+  if (!isSignInWithEmailLink(auth, url)) return null;
+
+  let email = providedEmail;
+  if (!email && typeof window !== "undefined") {
+    email = window.localStorage.getItem("emailForSignIn") || undefined;
+  }
+
+  if (!email) {
+    throw new Error("Email address required to complete sign in.");
+  }
+
+  const result = await signInWithEmailLink(auth, email, url);
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem("emailForSignIn");
+  }
+
+  const user: User = result.user;
+  const idToken = await user.getIdToken();
+
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName || user.email?.split("@")[0] || "User",
+    photoURL: user.photoURL,
+    idToken,
+  };
+}
+
+/**
  * Sign out of Firebase Auth.
  */
 export async function signOutFirebase(): Promise<void> {
   await firebaseSignOut(auth);
 }
+
