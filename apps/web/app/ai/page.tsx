@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import Link from "next/link";
 import Lottie from "lottie-react";
+import toast from "react-hot-toast";
 import { streamChat } from "../lib/streamChat";
 
 // E V E.json Lottie animation for AI avatar
@@ -51,7 +52,15 @@ function MessageContent({ content }: { content: string }) {
   );
 }
 
+const MODELS = [
+  { id: "groq-llama3", name: "Groq (Llama-3 70B)", badge: "Fastest AI", desc: "Ultra-fast inference" },
+  { id: "deepseek-r1", name: "DeepSeek R1", badge: "Reasoning", desc: "Advanced step-by-step logic" },
+  { id: "gemini-pro", name: "Google Gemini Pro", badge: "Google AI", desc: "Multimodal intelligence" }
+];
+
 export default function AIChatPage() {
+  const [selectedModel, setSelectedModel] = useState("groq-llama3");
+  const [isListening, setIsListening] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: "ai", content: AI_WELCOME, time: "now" }
   ]);
@@ -60,6 +69,37 @@ export default function AIChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const startVoiceInput = () => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Web Speech API is not supported in this browser.");
+      return;
+    }
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.onstart = () => {
+        setIsListening(true);
+        toast("Listening to your voice...", { icon: "🎙️" });
+      };
+      recognition.onresult = (e: any) => {
+        const text = e.results[0][0].transcript;
+        if (text) {
+          setInput((prev) => (prev ? `${prev} ${text}` : text));
+          toast.success("Voice transcribed!");
+        }
+        setIsListening(false);
+      };
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -183,7 +223,21 @@ export default function AIChatPage() {
                 {streaming ? "Generating…" : "Ready to help"}
               </p>
             </div>
-            <div className="ml-auto flex gap-2">
+
+            {/* AI Model Switcher */}
+            <div className="ml-auto flex items-center gap-2">
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="bg-slate-900 border border-slate-700 text-cyan-400 text-xs font-bold px-3 py-1.5 rounded-xl outline-none cursor-pointer focus:border-cyan-500"
+              >
+                {MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.badge})
+                  </option>
+                ))}
+              </select>
+
               {streaming && (
                 <button
                   className="btn btn-ghost text-xs"
@@ -305,6 +359,19 @@ export default function AIChatPage() {
                   }
                 }}
               />
+
+              {/* Voice Mic Input Button */}
+              <button
+                type="button"
+                onClick={startVoiceInput}
+                className={`p-2 rounded-xl transition ${
+                  isListening ? "bg-red-500/20 text-red-400 animate-pulse border border-red-500/40" : "hover:bg-slate-800 text-slate-400"
+                }`}
+                title="Voice Input (Speech-to-Text)"
+              >
+                <i className={`bi ${isListening ? "bi-mic-fill" : "bi-mic"}`} />
+              </button>
+
               <button
                 className="btn btn-primary shrink-0"
                 style={{ height: 36, padding: "0 14px" }}

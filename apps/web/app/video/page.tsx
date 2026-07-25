@@ -25,6 +25,9 @@ export default function VideoPage() {
   const [mode, setMode] = useState<"text-to-video" | "image-to-video">("text-to-video");
   const [prompt, setPrompt] = useState("A majestic lion standing on a cliff at sunset with volumetric lighting, 4k cinematic photorealistic 60fps");
   const [modelId, setModelId] = useState("cogvideox");
+  const [cameraMotion, setCameraMotion] = useState<"zoom-in" | "zoom-out" | "pan-right" | "pan-left" | "tilt-up">("zoom-in");
+  const [includeAudio, setIncludeAudio] = useState(true);
+  const [fps, setFps] = useState<30 | 60>(30);
   const [aspect, setAspect] = useState<"16:9" | "9:16" | "1:1">("16:9");
   const [duration, setDuration] = useState<3 | 5 | 10>(5);
 
@@ -57,7 +60,7 @@ export default function VideoPage() {
     } catch {}
   };
 
-  /** Record Canvas animation frames into a real playable WebM video file */
+  /** Record Canvas animation frames into a real playable WebM video file with optional Synthesized Audio track */
   const compileRealWebMVideo = (
     drawFrame: (ctx: CanvasRenderingContext2D, width: number, height: number, frame: number) => void
   ): Promise<string> => {
@@ -69,12 +72,44 @@ export default function VideoPage() {
       canvas.height = h;
       const ctx = canvas.getContext("2d")!;
 
-      const stream = canvas.captureStream(30);
+      const canvasStream = canvas.captureStream(fps);
+      let combinedStream = canvasStream;
+
+      let audioCtx: AudioContext | null = null;
+      let osc: OscillatorNode | null = null;
+
+      if (includeAudio && typeof window !== "undefined") {
+        try {
+          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+            const dest = audioCtx.createMediaStreamDestination();
+            osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime); // Ambient A3 note
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(dest);
+            osc.start();
+
+            // Combine video track + audio track
+            const audioTrack = dest.stream.getAudioTracks()[0];
+            if (audioTrack) {
+              combinedStream = new MediaStream([
+                ...canvasStream.getVideoTracks(),
+                audioTrack
+              ]);
+            }
+          }
+        } catch {}
+      }
+
       let mediaRecorder: MediaRecorder;
       try {
-        mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+        mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
       } catch {
-        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder = new MediaRecorder(combinedStream);
       }
 
       const chunks: Blob[] = [];
@@ -83,6 +118,8 @@ export default function VideoPage() {
       };
 
       mediaRecorder.onstop = () => {
+        if (osc) try { osc.stop(); } catch {}
+        if (audioCtx) try { audioCtx.close(); } catch {}
         const blob = new Blob(chunks, { type: "video/webm" });
         const videoUrl = URL.createObjectURL(blob);
         resolve(videoUrl);
@@ -91,7 +128,7 @@ export default function VideoPage() {
       mediaRecorder.start();
 
       let frame = 0;
-      const totalFrames = duration * 30; // 30fps
+      const totalFrames = duration * fps;
       const interval = setInterval(() => {
         if (cancelRef.current) {
           clearInterval(interval);
@@ -109,7 +146,7 @@ export default function VideoPage() {
           clearInterval(interval);
           mediaRecorder.stop();
         }
-      }, 1000 / 30);
+      }, 1000 / fps);
     });
   };
 
@@ -402,6 +439,64 @@ export default function VideoPage() {
                     <p className="text-[11px] text-[var(--text-muted)] line-clamp-1">{m.desc}</p>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Camera Motion & Sound Effects Synthesizer */}
+            <div className="surface rounded-2xl p-4 sm:p-5 border border-[var(--border)] space-y-4">
+              <div>
+                <label className="label block mb-2 text-xs font-bold">Camera Motion Effect</label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  {[
+                    { id: "zoom-in", label: "🔍 Zoom In" },
+                    { id: "zoom-out", label: "🔍 Zoom Out" },
+                    { id: "pan-right", label: "➡️ Pan Right" },
+                    { id: "pan-left", label: "⬅️ Pan Left" },
+                    { id: "tilt-up", label: "⬆️ Tilt Up" }
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setCameraMotion(m.id as any)}
+                      className="py-2 px-1 rounded-xl text-[11px] font-bold border transition text-center min-h-[38px] truncate"
+                      style={{
+                        background: cameraMotion === m.id ? "var(--accent)" : "var(--bg-hover)",
+                        borderColor: cameraMotion === m.id ? "var(--accent)" : "var(--border)",
+                        color: cameraMotion === m.id ? "white" : "var(--text-secondary)"
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--border)]">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-[var(--text-primary)]">
+                  <input
+                    type="checkbox"
+                    checked={includeAudio}
+                    onChange={(e) => setIncludeAudio(e.target.checked)}
+                    className="w-4 h-4 rounded text-cyan-500 bg-slate-900 border-slate-700 focus:ring-0"
+                  />
+                  🔊 Synthesize AI Ambient Audio Track
+                </label>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-bold text-[var(--text-muted)] mr-1">FPS:</span>
+                  {([30, 60] as const).map((rate) => (
+                    <button
+                      key={rate}
+                      onClick={() => setFps(rate)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition ${
+                        fps === rate
+                          ? "bg-purple-600 border-purple-500 text-white"
+                          : "bg-[var(--bg-hover)] border-[var(--border)] text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {rate}fps
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

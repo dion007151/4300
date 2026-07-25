@@ -443,3 +443,29 @@ main, .overflow-y-auto, .overflow-auto {
   .gap-6 { gap: 1rem !important; }
   .gap-8 { gap: 1.25rem !important; }
 }
+
+/* ─── Print & PDF Export Optimization ───────────────────── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-resume, #printable-resume * {
+    visibility: visible;
+  }
+  #printable-resume {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 20mm !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}

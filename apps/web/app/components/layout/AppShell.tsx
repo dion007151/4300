@@ -6,6 +6,7 @@ import { TopBar } from "./TopBar";
 import { useAppStore } from "../../store/useAppStore";
 import { SearchPalette } from "../search/SearchPalette";
 import { AuthModal } from "../auth/AuthModal";
+import { MobileNavDock } from "./MobileNavDock";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { theme, sidebarCollapsed } = useAppStore();
@@ -43,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div
-        className="flex flex-col flex-1 min-w-0 transition-all duration-300"
+        className="flex flex-col flex-1 min-w-0 transition-all duration-300 pb-16 md:pb-0"
         style={{
           // On desktop, offset by sidebar width. On mobile, no offset (sidebar is overlay).
           marginLeft: 0,
@@ -65,9 +66,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Portals */}
+      {/* Portals & Navigation */}
       <SearchPalette />
       <AuthModal />
+      <MobileNavDock />
     </div>
   );
 }
