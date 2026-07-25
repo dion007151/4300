@@ -150,3 +150,41 @@ export function scoreResume(resumeText: string, jobDesc: string): ATSResult {
     suggestions: suggestions.slice(0, 5)
   };
 }
+
+export interface KeywordHeatmapItem {
+  word: string;
+  matched: boolean;
+}
+
+/**
+ * Generate a tokenized array of words from resumeText with matching status against jobDesc
+ */
+export function getKeywordHeatmap(resumeText: string, jobDesc: string): KeywordHeatmapItem[] {
+  const jobKeywords = new Set(extractKeywords(jobDesc, 50).map((k) => k.toLowerCase()));
+  const rawWords = resumeText.split(/(\s+)/);
+
+  return rawWords.map((part) => {
+    const cleanToken = part.toLowerCase().replace(/[^a-z0-9#+.\-/]/g, "");
+    const matched = cleanToken.length > 2 && jobKeywords.has(cleanToken);
+    return {
+      word: part,
+      matched,
+    };
+  });
+}
+
+/**
+ * Client-side file text extractor for drag-and-drop resume upload
+ */
+export async function extractTextFromFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      resolve(content || "");
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsText(file);
+  });
+}
+

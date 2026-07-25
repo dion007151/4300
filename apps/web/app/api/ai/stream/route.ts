@@ -4,6 +4,7 @@ export const runtime = "edge";
 
 const GROQ_API_KEY  = process.env.GROQ_API_KEY  ?? "";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1";
 const AI_PROVIDER   = process.env.AI_PROVIDER   ?? "groq";
 
 const SYSTEM_PROMPT =
@@ -15,8 +16,8 @@ const SYSTEM_PROMPT =
 // ── Mock fallback chunks ──────────────────────────────────────────────────────
 const MOCK_CHUNKS = [
   "Hey! I'm the **4300 AI assistant**. ",
-  "To enable real AI responses, add `GROQ_API_KEY=your-key` to `apps/web/.env.local`. ",
-  "Get a free key at [console.groq.com](https://console.groq.com) — no credit card needed! ",
+  "To enable real AI responses, add `GROQ_API_KEY=your-key` or set `AI_PROVIDER=ollama` in `apps/web/.env.local`. ",
+  "For Groq, get a free key at [console.groq.com](https://console.groq.com) — no credit card needed! ",
   "Until then I'll respond with this placeholder. **Everything. For Free.** 🚀",
 ];
 
@@ -37,19 +38,23 @@ function mockStream(): ReadableStream {
   });
 }
 
-// ── Groq / OpenAI-compatible streaming ───────────────────────────────────────
-async function groqStream(
+// ── Groq / OpenAI / Ollama-compatible streaming ──────────────────────────────
+async function openAICompatibleStream(
   message: string,
   apiKey: string,
   baseUrl: string,
   model: string
 ): Promise<ReadableStream> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+
   const upstream = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers,
     body: JSON.stringify({
       model,
       stream: true,
@@ -128,7 +133,7 @@ async function groqStream(
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  let body: { message?: string; tool?: string } = {};
+  let body: { message?: string; tool?: string; provider?: string } = {};
   try {
     body = await req.json();
   } catch {
@@ -146,26 +151,34 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const requestedProvider = body.provider || AI_PROVIDER;
+
   let stream: ReadableStream;
 
   try {
-    if ((AI_PROVIDER === "groq" || !AI_PROVIDER) && GROQ_API_KEY) {
-      stream = await groqStream(
+    if (requestedProvider === "ollama") {
+      stream = await openAICompatibleStream(
+        message,
+        "",
+        OLLAMA_BASE_URL,
+        "llama3"
+      );
+    } else if ((requestedProvider === "groq" || !requestedProvider) && GROQ_API_KEY) {
+      stream = await openAICompatibleStream(
         message,
         GROQ_API_KEY,
         "https://api.groq.com/openai/v1",
         "llama-3.1-8b-instant"
       );
-    } else if (AI_PROVIDER === "openai" && OPENAI_API_KEY) {
-      stream = await groqStream(
+    } else if (requestedProvider === "openai" && OPENAI_API_KEY) {
+      stream = await openAICompatibleStream(
         message,
         OPENAI_API_KEY,
         "https://api.openai.com/v1",
         "gpt-4o-mini"
       );
     } else if (GROQ_API_KEY) {
-      // auto-fallback: use Groq if key is present regardless of provider setting
-      stream = await groqStream(
+      stream = await openAICompatibleStream(
         message,
         GROQ_API_KEY,
         "https://api.groq.com/openai/v1",

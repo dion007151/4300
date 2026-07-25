@@ -1,0 +1,66 @@
+name: CI Workflow
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  frontend:
+    name: Frontend (Next.js & TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Typecheck Frontend
+        run: npm run typecheck --workspace=@4300/web
+
+      - name: Lint Frontend
+        run: npm run lint --workspace=@4300/web
+
+      - name: Run Vitest Unit Tests
+        run: npm run test --workspace=@4300/web
+
+  backend:
+    name: Backend (FastAPI & Pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Backend Dependencies
+        run: |
+          cd apps/api
+          python -m pip install --upgrade pip
+          pip install .[ai,dev]
+
+      - name: Run Pytest Backend Tests
+        run: |
+          cd apps/api
+          pytest
+
+  docker:
+    name: Docker Compose Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config

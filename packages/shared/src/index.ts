@@ -507,3 +507,30 @@ export const toolModules: ToolModule[] = [
     gradient: "from-blue-500 to-indigo-600"
   }
 ];
+
+// ── 4300 Community Plugin SDK & Automation Engine ──────────────────────────
+
+export interface PluginMetadata {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description: string;
+  suite: string;
+}
+
+export interface AutomationTrigger {
+  event: "document.created" | "resume.scored" | "job.status_changed" | "ai.chat_completed";
+  action: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+}
+
+export interface ToolPluginConfig {
+  metadata: PluginMetadata;
+  module: ToolModule;
+  triggers?: AutomationTrigger[];
+}
+
+export function defineToolPlugin(config: ToolPluginConfig): ToolPluginConfig {
+  return config;
+}
+

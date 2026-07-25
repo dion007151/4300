@@ -10,6 +10,7 @@ const API_BASE = "";
 export interface StreamOptions {
   message: string;
   tool?: string;
+  provider?: "groq" | "openai" | "ollama";
   onDelta: (chunk: string) => void;
   onDone?: () => void;
   onError?: (err: string) => void;
@@ -19,6 +20,7 @@ export interface StreamOptions {
 export async function streamChat({
   message,
   tool = "chat",
+  provider,
   onDelta,
   onDone,
   onError,
@@ -30,7 +32,7 @@ export async function streamChat({
     response = await fetch(`${API_BASE}/api/ai/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, tool }),
+      body: JSON.stringify({ message, tool, provider }),
       signal,
     });
   } catch (err) {
