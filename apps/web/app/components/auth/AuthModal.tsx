@@ -38,19 +38,10 @@ export function AuthModal() {
     } catch (err: any) {
       if (err?.code === "auth/popup-closed-by-user") {
         toast.error("Google sign-in popup was closed.", { id: "auth-toast" });
+      } else if (err?.code === "auth/unauthorized-domain") {
+        toast.error("Firebase domain error: Please add this URL to Authorized Domains in Firebase Console.", { id: "auth-toast" });
       } else {
-        // Fallback demo sign in if popup is blocked or keys missing
-        try {
-          await signIn("credentials", {
-            email: "google.user@4300.to",
-            name: "Google Authenticated User",
-            redirect: false,
-          });
-          toast.success("Signed in with Google Account! 🎉", { id: "auth-toast" });
-          handleClose();
-        } catch {
-          toast.error("Google sign-in failed. Try again.", { id: "auth-toast" });
-        }
+        toast.error(`Firebase Auth error: ${err?.message || "Authentication failed"}`, { id: "auth-toast" });
       }
     } finally {
       setLoading(null);
